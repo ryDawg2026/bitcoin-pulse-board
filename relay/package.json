@@ -1,0 +1,1 @@
+{"name":"kalshi-relay","version":"1.0.0","private":true,"description":"Read-only CORS relay for Kalshi KXBTC15M public market data","main":"server.js","scripts":{"start":"node server.js"},"engines":{"node":">=18"}}
