@@ -77,6 +77,7 @@ function predictV1(W,C,okSrc,S,MIN_HIST){
 var V2_CUTOFF_UNIX=1790294400; // 2026-09-25 00:00 UTC: coefficients were fitted only on windows before this
 var V2_COEF={z4:0.184,z1:0.016,rsi:0.139,clv:0.033,prem:0.017};   // filled by backtest/fit_v2.py
 var V2_STRONG=0.0159;                            // |p-0.5| at/above this = "conviction" call (train median)
+var V2_NOEDGE=0.01;                            // |p-0.5| below this = "no edge": 32% of backtest windows, hit 50.2% (coin flip)
 var V2_MIN_HIST=100;
 function sigmoid(x){return 1/(1+Math.exp(-x))}
 function predictV2(W,C,okSrc,S){
@@ -103,7 +104,7 @@ function predictV2(W,C,okSrc,S){
   var p=sigmoid(logit),dir=logit>0?'UP':logit<0?'DOWN':(r1<=0?'UP':'DOWN');
   var pc=dir==='UP'?p:1-p,edge=Math.abs(p-0.5);
   var lk=cons[hist[n-1]];
-  return {dir:dir,score:logit,conf:Math.round(pc*100),pUp:p,edge:edge,strong:edge>=V2_STRONG,signals:sg,basis:hist[n-1],nSrc:lk.n,
+  return {dir:dir,score:logit,conf:Math.round(pc*100),pUp:p,edge:edge,strong:edge>=V2_STRONG,noedge:edge<V2_NOEDGE,signals:sg,basis:hist[n-1],nSrc:lk.n,
     feat:{f:f,z1:z1,z4:z4,rsi:rs,clv:clv,pz:pz,vol:vol},eng:'v2'};
 }
 

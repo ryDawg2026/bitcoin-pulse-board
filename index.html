@@ -52,6 +52,15 @@ details summary{cursor:pointer;color:var(--blue)}
 .disc{border-color:#5a4a1c;background:#1c1810;color:#e8d9a8;font-size:13px}
 footer{color:var(--mut);font-size:12px;text-align:center;padding:10px 0 30px}
 .lockbadge{font-size:12px;color:var(--mut)}
+.ctxgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,330px),1fr));gap:12px}
+.mini{background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:12px;min-width:0;overflow-wrap:anywhere}
+.mini .cs{white-space:nowrap;flex-shrink:0}.mini h3{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--mut);margin:0 0 8px;display:flex;justify-content:space-between;align-items:center;gap:8px;font-weight:600}
+.mini a{color:var(--blue)}.ctxnote{font-size:11.5px;margin-top:8px;line-height:1.35}
+.newsrow{padding:5px 0;border-bottom:1px dashed var(--line);font-size:13.5px}.newsrow:last-child{border:0}
+.evrow{padding:4px 0;font-size:13.5px}.warn{color:#ffb454}.sit{background:#3a1218;border:1px solid var(--dn);color:#ffb3bf;padding:6px 10px;border-radius:8px;margin-bottom:6px;font-size:13px}
+.ctxalert{display:none;padding:8px 12px;border-radius:10px;margin-bottom:12px;font-size:13px}.ctxalert.red{background:#3a1218;border:1px solid var(--dn);color:#ffb3bf}.ctxalert.amber{background:#3a2a10;border:1px solid #7a5a1c;color:#ffd48a}
+.noedge{color:var(--mut)!important}.pill.warn{color:#ffb454;border-color:rgba(255,180,84,.5)}.pill.bad.warn{color:#ffb454}
+details>summary{cursor:pointer}
 </style>
 </head>
 <body>
@@ -68,6 +77,7 @@ footer{color:var(--mut);font-size:12px;text-align:center;padding:10px 0 30px}
 </header>
 
 <div class="banner" id="banner"></div>
+<div class="ctxalert" id="ctxAlert"></div>
 
 <div class="grid g2">
   <section class="card" id="callCard">
@@ -109,6 +119,21 @@ footer{color:var(--mut);font-size:12px;text-align:center;padding:10px 0 30px}
   <h2>Kalshi “BTC up in next 15 mins?” market <span class="mut" style="text-transform:none;letter-spacing:0">(read-only public data · odds are the crowd’s, not ours · nothing here places an order)</span></h2>
   <div id="kalshiBody" class="mut">Loading Kalshi…</div>
   <div class="chartbox" style="height:210px;margin-top:10px"><canvas id="kalshiChart"></canvas></div>
+</section>
+
+<section class="card" id="ctxCard">
+  <h2>Market context <span class="mut" style="text-transform:none;letter-spacing:0">(read-only information to think a call over · none of this feeds the engine · no orders)</span></h2>
+  <div class="mut" style="font-size:12.5px;margin-bottom:10px">Earlier backtests found news, whale transfers, funding and order-book imbalance did <b>not</b> predict 15-minute moves beyond Kalshi’s own price. Treat these as background. Any box that cannot load says “unavailable” — nothing is guessed.</div>
+  <div class="ctxgrid">
+    <div class="mini" id="ctx-settle"><h3>Settlement gap (BRTI) <span class="cs pill">loading</span></h3><div class="cb mut">Loading…</div></div>
+    <div class="mini" id="ctx-book"><h3>Kalshi order book <span class="cs pill">loading</span></h3><div class="cb mut">Loading…</div></div>
+    <div class="mini" id="ctx-events"><h3>Upcoming high-impact events <span class="cs pill">loading</span></h3><div class="cb mut">Loading…</div></div>
+    <div class="mini" id="ctx-vol"><h3>Volatility regime <span class="cs pill">loading</span></h3><div class="cb mut">Loading…</div></div>
+    <div class="mini" id="ctx-liq"><h3>Liquidations <span class="cs pill">loading</span></h3><div class="cb mut">Loading…</div></div>
+    <div class="mini" id="ctx-whale"><h3>Whale transfers <span class="cs pill">loading</span></h3><div class="cb mut">Loading…</div></div>
+    <div class="mini" id="ctx-deriv"><h3>Funding · open interest · sentiment <span class="cs pill">loading</span></h3><div class="cb mut">Loading…</div></div>
+    <div class="mini" id="ctx-news"><h3>Bitcoin headlines <span class="cs pill">loading</span></h3><div class="cb mut">Loading…</div></div>
+  </div>
 </section>
 
 <section class="card">
@@ -175,6 +200,7 @@ footer{color:var(--mut);font-size:12px;text-align:center;padding:10px 0 30px}
 <script src="engine.js"></script>
 <script>window.KALSHI_PROXY='https://kalshi-relay.rydawg2026.workers.dev'; /* read-only Cloudflare Worker, see tools/kalshi-proxy-worker.js */</script>
 <script src="kalshi.js"></script>
+<script src="context.js"></script>
 <script>
 (function(){
 'use strict';
@@ -273,7 +299,7 @@ function gradeCall(c,C){
 }
 function makeCall(W,kind,C,okSrc){
   var p=predictAt(W,C,okSrc);if(!p)return null;
-  var c={W:W,eng:'v2',strong:!!p.strong,dir:p.dir,conf:p.conf,score:p.score,signals:p.signals.map(function(s){return {k:s.k,name:s.name,w:s.w,vote:s.vote,desc:s.desc}}),kind:kind,madeAt:nowS(),nSrc:p.nSrc,basis:p.basis};
+  var c={W:W,eng:'v2',strong:!!p.strong,noedge:!!p.noedge,dir:p.dir,conf:p.conf,score:p.score,signals:p.signals.map(function(s){return {k:s.k,name:s.name,w:s.w,vote:s.vote,desc:s.desc}}),kind:kind,madeAt:nowS(),nSrc:p.nSrc,basis:p.basis};
   state.calls[W]=c;return c;
 }
 function runEngine(){
@@ -294,10 +320,11 @@ function runEngine(){
 }
 
 function stats(){
-  var ks=Object.keys(state.calls).map(Number).sort(function(a,b){return a-b}),o={all:{w:0,l:0},live:{w:0,l:0},bf:{w:0,l:0},v2:{w:0,l:0},v2s:{w:0,l:0},v1:{w:0,l:0},bw:0,bl:0,bp:0,pnl:0,bal:START_BAL,ks:ks};
+  var ks=Object.keys(state.calls).map(Number).sort(function(a,b){return a-b}),o={all:{w:0,l:0},live:{w:0,l:0},bf:{w:0,l:0},v2:{w:0,l:0},v2s:{w:0,l:0},v1:{w:0,l:0},kl:{w:0,l:0},kb:{w:0,l:0},kne:{w:0,l:0},bw:0,bl:0,bp:0,pnl:0,bal:START_BAL,ks:ks};
   ks.forEach(function(w){var c=state.calls[w];
     if(c.res==='win'||c.res==='loss'){var s=c.kind==='live'?o.live:o.bf;var win=c.res==='win';if(win){o.all.w++;s.w++}else{o.all.l++;s.l++}
       var e=c.eng==='v2'?o.v2:o.v1;if(win)e.w++;else e.l++;if(c.eng==='v2'&&c.strong){if(win)o.v2s.w++;else o.v2s.l++}}
+    if(c.kres){var ks2=c.kind==='live'?o.kl:o.kb;if(c.kres==='win')ks2.w++;else ks2.l++;if(c.noedge){if(c.kres==='win')o.kne.w++;else o.kne.l++}}
     if(c.bet&&c.bet.placedAt>=state.resetAt&&c.bet.res){ if(c.bet.res==='win')o.bw++;else if(c.bet.res==='loss')o.bl++;else o.bp++;o.pnl+=c.bet.pnl}});
   o.bal=START_BAL+o.pnl;return o;
 }
@@ -311,7 +338,8 @@ function render(){
   // current call
   if(cur){
     $('callDir').textContent=(cur.dir==='UP'?'▲ UP':'▼ DOWN');$('callDir').className='big '+(cur.dir==='UP'?'up-t':'dn-t');
-    $('callConf').textContent=cur.conf+'%'+(cur.eng==='v2'?(cur.strong?' · conviction':' · lean'):'');
+    $('callConf').textContent=cur.conf+'%'+(cur.eng==='v2'?(cur.noedge?' · NO EDGE — sit out':cur.strong?' · conviction':' · lean'):'');
+    $('callDir').style.opacity=cur.noedge?.45:1;
     $('callWin').textContent=hhmm(cur.W)+' – '+hhmm(cur.W+Q);
     var late=cur.madeAt-cur.W;
     $('lockInfo').innerHTML='🔒 locked '+hhmmss(cur.madeAt)+(late>90?' (page opened mid-window)':'');
@@ -335,16 +363,17 @@ function render(){
       var w=Math.abs(s.vote)*50,col=s.vote>=0?'var(--up)':'var(--dn)',left=s.vote>=0?50:50-w;
       return '<div class="sig"><div class="nm">'+esc(s.name)+'<small>'+esc(s.desc)+'</small></div><div class="bar"><i style="left:'+left+'%;width:'+w+'%;background:'+col+'"></i></div><div class="'+(s.vote>=0?'up-t':'dn-t')+'" style="text-align:right">'+(s.vote>=0?'+':'')+s.vote.toFixed(2)+'</div><div class="w mut" style="text-align:right">'+(cur.eng==='v2'?'coef '+s.w.toFixed(2):'w '+Math.round(s.w*100)+'%')+'</div></div>';
     }).join('');
-    $('sigMeta').textContent=(cur.eng==='v2'?'logit '+(cur.score>=0?'+':'')+cur.score.toFixed(3)+' → '+cur.dir+' ('+cur.conf+'%'+(cur.strong?', conviction call':', lean — below the conviction line')+')':'score '+(cur.score>=0?'+':'')+cur.score.toFixed(3)+' → '+cur.dir)+' · '+cur.nSrc+' sources in consensus';
+    $('sigMeta').textContent=(cur.eng==='v2'?'logit '+(cur.score>=0?'+':'')+cur.score.toFixed(3)+' → '+cur.dir+' ('+cur.conf+'%'+(cur.noedge?', NO EDGE: signals cancel out (backtest: coin flip), sit this one out':cur.strong?', conviction call':', lean — below the conviction line')+')':'score '+(cur.score>=0?'+':'')+cur.score.toFixed(3)+' → '+cur.dir)+' · '+cur.nSrc+' sources in consensus';
   }else{sgEl.textContent='Waiting for data…';$('sigMeta').textContent=''}
   // records
   function rec(w,l,label){var n=w+l;return '<div class="kv"><small>'+label+'</small><b>'+w+' W / '+l+' L</b><small>'+(n?(w/n*100).toFixed(1)+'% win rate':'no graded calls')+'</small></div>'}
-  $('engRec').innerHTML=rec(st.v2.w,st.v2.l,'v2 engine · all calls')+rec(st.v2s.w,st.v2s.l,'v2 · conviction calls only')+rec(st.live.w,st.live.l,'Live only (any engine)')+(st.v1.w+st.v1.l?rec(st.v1.w,st.v1.l,'Old v1 engine (legacy log)'):'');
+  $('engRec').innerHTML=rec(st.v2.w,st.v2.l,'v2 engine · all calls')+rec(st.v2s.w,st.v2s.l,'v2 · conviction calls only')+rec(st.live.w,st.live.l,'Live only (any engine)')+(st.kl.w+st.kl.l+st.kb.w+st.kb.l?rec(st.kl.w,st.kl.l,'LIVE calls vs Kalshi settlement')+rec(st.kb.w,st.kb.l,'Backfilled calls vs Kalshi settlement')+(st.kne.w+st.kne.l?rec(st.kne.w,st.kne.l,'…of which “no edge” calls'):''):'')+(st.v1.w+st.v1.l?rec(st.v1.w,st.v1.l,'Old v1 engine (legacy log)'):'');
   var bn=st.bw+st.bl;
   $('usrRec').innerHTML='<div class="kv"><small>Balance</small><b>'+fmtM(st.bal)+'</b><small>'+(st.pnl>=0?'+':'')+fmtM(st.pnl)+' vs $1,000</small></div><div class="kv"><small>Bets won / lost</small><b>'+st.bw+' / '+st.bl+'</b><small>'+(st.bp?st.bp+' push':'')+'</small></div><div class="kv"><small>Win rate</small><b>'+(bn?(st.bw/bn*100).toFixed(1)+'%':'—')+'</b></div>';
   $('bal').textContent=fmtM(st.bal);$('betWL').textContent=st.bw+' / '+st.bl;$('betRate').textContent=bn?(st.bw/bn*100).toFixed(1)+'%':'—';
   renderBetControls(cur,st);
-  window.__pulseNow={med:med,call:cur,calls:state.calls};
+  var cl=C&&C.ts?C.ts.slice(-120):[],lc=cl.length?C.cons[cl[cl.length-1]]:null;
+  window.__pulseNow={med:med,call:cur,calls:state.calls,closes:cl.map(function(t){return C.cons[t].c}),prem:lc&&isFinite(lc.usd)&&isFinite(lc.usdt)?lc.usd/lc.usdt-1:NaN};
   renderSources(med);renderLog(st);renderCharts(st);if(window.KalshiPanel&&window.__kalshiReady)window.KalshiPanel.rerender();
 }
 function renderBetControls(cur,st){
@@ -413,10 +442,10 @@ function resetBets(){
   save();render();
 }
 function csvExport(){
-  var h=['window_start_local','window_end_local','window_start_unix','type','call','confidence_pct','score','open','close','actual','engine_result','bet_side','bet_amount','bet_result','bet_pnl','bet_counted_in_current_record','engine','conviction'];
+  var h=['window_start_local','window_end_local','window_start_unix','type','call','confidence_pct','score','open','close','actual','engine_result','bet_side','bet_amount','bet_result','bet_pnl','bet_counted_in_current_record','engine','conviction','no_edge','vs_kalshi_settlement','kalshi_expiration_value'];
   var rows=[h.join(',')];
   Object.keys(state.calls).map(Number).sort(function(a,b){return a-b}).forEach(function(w){var c=state.calls[w],b=c.bet||{};
-    rows.push([new Date(w*1000).toLocaleString(),new Date((w+Q)*1000).toLocaleString(),w,c.kind,c.dir,c.conf,(c.score||0).toFixed(4),c.open!=null?c.open.toFixed(2):'',c.close!=null?c.close.toFixed(2):'',c.actual||'',c.res||'',b.side||'',b.amt!=null?b.amt:'',b.res||'',b.pnl!=null?b.pnl:'',c.bet?(c.bet.placedAt>=state.resetAt?'yes':'no'):'',c.eng||'v1',c.eng==='v2'?(c.strong?'yes':'no'):''].map(function(x){return '"'+String(x).replace(/"/g,'""')+'"'}).join(','))});
+    rows.push([new Date(w*1000).toLocaleString(),new Date((w+Q)*1000).toLocaleString(),w,c.kind,c.dir,c.conf,(c.score||0).toFixed(4),c.open!=null?c.open.toFixed(2):'',c.close!=null?c.close.toFixed(2):'',c.actual||'',c.res||'',b.side||'',b.amt!=null?b.amt:'',b.res||'',b.pnl!=null?b.pnl:'',c.bet?(c.bet.placedAt>=state.resetAt?'yes':'no'):'',c.eng||'v1',c.eng==='v2'?(c.strong?'yes':'no'):'',c.eng==='v2'?(c.noedge?'yes':'no'):'',c.kres||'',c.kexp!=null&&isFinite(c.kexp)?c.kexp:''].map(function(x){return '"'+String(x).replace(/"/g,'""')+'"'}).join(','))});
   var blob=new Blob([rows.join('\n')],{type:'text/csv'}),a=document.createElement('a');
   a.href=URL.createObjectURL(blob);a.download='bitcoin-pulse-log.csv';document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove()},500);
 }
@@ -455,9 +484,9 @@ $('tvBtn').onclick=function(){
   s.onerror=function(){box.textContent='TradingView could not be loaded.'};document.body.appendChild(s);this.disabled=true;
 };
 render();schedule();setInterval(tick,1000);tick();
-refresh().then(function(){window.__pulseReady=true});
+refresh().then(function(){window.__pulseReady=true;if(window.ContextPanel)window.ContextPanel.start()});
 if(window.KalshiPanel)window.KalshiPanel.start();
-window.__pulse={state:function(){return state},sources:S,engine:function(){return runEngine()}};
+window.__pulse={save:save,rerender:function(){render()},state:function(){return state},sources:S,engine:function(){return runEngine()}};
 })();
 </script>
 </body>

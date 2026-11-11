@@ -28,7 +28,7 @@ function viaApi(base){
     var cur=pick(d.markets||[]);if(!cur)throw new Error('no open market');
     var now=Math.floor(Date.now()/1000),o=Date.parse(cur.open_time)/1000;
     var cc=J(origin+'/series/'+SERIES+'/markets/'+cur.ticker+'/candlesticks?start_ts='+(o-60)+'&end_ts='+(now+60)+'&period_interval=1').catch(function(){return {candlesticks:[]}});
-    var st=J(origin+'/markets?series_ticker='+SERIES+'&status=settled&limit=24').catch(function(){return {markets:[]}});
+    var st=J(origin+'/markets?series_ticker='+SERIES+'&status=settled&limit=50').catch(function(){return {markets:[]}});
     return Promise.all([cc,st]).then(function(r){
       var settled=r[1].markets||[];
       var prev=settled[0];
@@ -66,7 +66,7 @@ function render(d,ctx){
     var bc=ctx&&ctx.calls&&ctx.calls[W],tag=bc?(bc.dir===(up?'UP':'DOWN')?'✔':'✘'):'';
     var t=new Date(W*1000).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
     return '<span title="'+esc(t+' · strike $'+s.floor_strike+' · settled '+(up?'UP':'DOWN')+(bc?' · board called '+bc.dir:''))+'" style="display:inline-block;min-width:34px;text-align:center;margin:2px;padding:2px 4px;border-radius:6px;border:1px solid var(--line);color:'+(up?'var(--up)':'var(--dn)')+'">'+(up?'▲':'▼')+'<small class="mut" style="display:block;font-size:10px">'+t.replace(/ ?[AP]M/,'')+(tag?' '+tag:'')+'</small></span>'}).join('');
-  var settledUp=(d.settled||[]).filter(function(s){return s.result==='yes'}).length,sn=(d.settled||[]).length;
+  var s24=(d.settled||[]).slice(0,24),settledUp=s24.filter(function(s){return s.result==='yes'}).length,sn=s24.length;
   var hist='<div style="margin-top:10px"><div class="mut" style="font-size:12px;margin-bottom:2px">Last '+sn+' settled Kalshi windows (newest left) — '+settledUp+' up / '+(sn-settledUp)+' down; ✔/✘ = board call matched/missed where the board has a logged call</div><div>'+strip+'</div></div>';
   $('kalshiBody').innerHTML=h+agree+hist;
   // chart
@@ -84,7 +84,7 @@ function fail(e){
   $('kalshiBody').innerHTML='<div class="mut" style="font-size:13px">Kalshi market data could not be loaded ('+esc(e.message)+'). Kalshi’s public API does not send CORS headers for github.io, so a static page cannot call it directly; see tools/kalshi-proxy-worker.js (free Cloudflare Worker) or tools/kalshi_snapshot.py. Nothing else on the board is affected.</div>';
 }
 function ctxNow(){var g=window.__pulseNow||{};return {price:g.med,call:g.call,calls:g.calls}}
-function refresh(){return load().then(function(d){last=d;render(d,ctxNow())},fail)}
+function refresh(){return load().then(function(d){last=d;render(d,ctxNow());if(window.ContextPanel&&ContextPanel.onKalshi)ContextPanel.onKalshi(d)},fail)}
 function tickClock(){var el=$('kClock');if(el){var s=+el.getAttribute('data-close')-Date.now()/1000;el.textContent=mmss(s);if(s<-3&&document.visibilityState==='visible'&&(!last||Date.now()-(last._at||0)>8000)){last&&(last._at=Date.now());refresh()}}}
-window.KalshiPanel={start:function(){if(!$('kalshiBody'))return;refresh().then(function(){window.__kalshiReady=true},function(){window.__kalshiReady=true});clearInterval(timer);timer=setInterval(function(){if(document.visibilityState==='visible')refresh()},20000);setInterval(tickClock,1000)},rerender:function(){if(last)render(last,ctxNow())}};
+window.KalshiPanel={start:function(){if(!$('kalshiBody'))return;refresh().then(function(){window.__kalshiReady=true},function(){window.__kalshiReady=true});clearInterval(timer);timer=setInterval(function(){if(document.visibilityState==='visible')refresh()},20000);setInterval(tickClock,1000)},base:function(){return BASE||API},viaSnapshot:function(){return last&&last._via==='snapshot'},last:function(){return last},rerender:function(){if(last)render(last,ctxNow())}};
 })();

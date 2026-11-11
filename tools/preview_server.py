@@ -7,7 +7,7 @@ class H(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
         if self.path.startswith('/kalshi-proxy/'):
             p=self.path[len('/kalshi-proxy'):]
-            ok=(p.startswith('/markets?') and 'series_ticker=KXBTC15M' in p) or re.match(r'^/series/KXBTC15M/markets/[A-Z0-9-]+/candlesticks\?',p)
+            ok=(p.startswith('/markets?') and 'series_ticker=KXBTC15M' in p) or re.match(r'^/series/KXBTC15M/markets/[A-Z0-9-]+/candlesticks\?',p) or re.match(r'^/markets/KXBTC15M-[A-Z0-9-]{3,40}/orderbook(\?depth=\d{1,2})?$',p) or re.match(r'^/live_data/events/KXBTC15M-[A-Z0-9-]{3,40}$',p)
             if not ok: self.send_error(403);return
             try:
                 r=urllib.request.urlopen(urllib.request.Request(API+p,headers={'User-Agent':'Mozilla/5.0'}),timeout=15);b=r.read();c=r.status
