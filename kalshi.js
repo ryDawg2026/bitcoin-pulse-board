@@ -13,7 +13,7 @@ var BASE=qp?decodeURIComponent(qp):(window.KALSHI_PROXY||'');
 var chart=null,last=null,timer=null,srcLabel='';
 function $(i){return document.getElementById(i)}
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
-function J(u){var c=new AbortController(),to=setTimeout(function(){c.abort()},10000);
+function J(u,ms){var c=new AbortController(),to=setTimeout(function(){c.abort()},ms||10000);
   return fetch(u,{signal:c.signal,cache:'no-store'}).then(function(r){clearTimeout(to);if(!r.ok)throw new Error('HTTP '+r.status);return r.json()},function(e){clearTimeout(to);throw e})}
 function num(x){var v=parseFloat(x);return isFinite(v)?v:NaN}
 function cents(x){return isFinite(x)?Math.round(x*100)+'¢':'—'}
@@ -24,7 +24,7 @@ function candMid(c){var b=c.yes_bid&&num(c.yes_bid.close_dollars),a=c.yes_ask&&n
 function pick(ms){var now=Date.now()/1000;return ms.filter(function(m){var o=Date.parse(m.open_time)/1000,c=Date.parse(m.close_time)/1000;return o<=now&&now<c})[0]||ms[0]}
 function viaApi(base){
   var origin=base||API;
-  return J(origin+'/markets?series_ticker='+SERIES+'&status=open&limit=5').then(function(d){
+  return J(origin+'/markets?series_ticker='+SERIES+'&status=open&limit=5',base?50000:10000).then(function(d){
     var cur=pick(d.markets||[]);if(!cur)throw new Error('no open market');
     var now=Math.floor(Date.now()/1000),o=Date.parse(cur.open_time)/1000;
     var cc=J(origin+'/series/'+SERIES+'/markets/'+cur.ticker+'/candlesticks?start_ts='+(o-60)+'&end_ts='+(now+60)+'&period_interval=1').catch(function(){return {candlesticks:[]}});
