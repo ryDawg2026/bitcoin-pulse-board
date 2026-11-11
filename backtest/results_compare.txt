@@ -1,0 +1,29 @@
+same windows only; common windows = 14301 2026-06-15 09:00:00 -> 2026-11-11 08:00:00
+ALL 150d (v2 TRAIN part in-sample!) v1 n= 14297 wins=  6971 hit= 48.8%  95%CI[47.9,49.6]
+                                   v2 n= 14297 wins=  7408 hit= 51.8%  95%CI[51.0,52.6]
+TRAIN (before 2026-09-25) in-sample v1 n=  9752 wins=  4759 hit= 48.8%  95%CI[47.8,49.8]
+                                   v2 n=  9752 wins=  5055 hit= 51.8%  95%CI[50.8,52.8]
+TEST (2026-09-25+) OUT-OF-SAMPLE   v1 n=  4545 wins=  2212 hit= 48.7%  95%CI[47.2,50.1]
+                                   v2 n=  4545 wins=  2353 hit= 51.8%  95%CI[50.3,53.2]
+--- TEST, Kalshi KXBTC15M settlement as the label
+TEST vs Kalshi result              v1 n=  4496 wins=  2217 hit= 49.3%  95%CI[47.9,50.8]
+                                   v2 n=  4496 wins=  2266 hit= 50.4%  95%CI[48.9,51.9]
+--- TEST, v2 conviction calls only (|p-.5|>=train median)
+v2 strong, candle label n=  2283 wins=  1213 hit= 53.1%  95%CI[51.1,55.2]
+v2 strong, Kalshi label  n=  2254 wins=  1162 hit= 51.6%  95%CI[49.5,53.6]
+v2 weak calls             n=  2262 wins=  1140 hit= 50.4%  95%CI[48.3,52.5]
+v1 same windows as strong n=  2283 wins=  1078 hit= 47.2%  95%CI[45.2,49.3]
+--- TEST v2 by confidence bucket (calibration)
+(0.0, 50.5] n=   749 wins=   383 hit= 51.1%  95%CI[47.6,54.7]
+(50.5, 51.5] n=  1415 wins=   718 hit= 50.7%  95%CI[48.1,53.3]
+(51.5, 52.5] n=  1005 wins=   507 hit= 50.4%  95%CI[47.4,53.5]
+(52.5, 60.0] n=  1376 wins=   745 hit= 54.1%  95%CI[51.5,56.8]
+--- v2 monthly hit rate (all windows)
+2026-06 v1 45.7% v2 53.6%  n= 1528 (v2 in-sample before Sep 25)
+2026-07 v1 48.4% v2 51.4%  n= 2976 (v2 in-sample before Sep 25)
+2026-08 v1 49.8% v2 51.8%  n= 2976 (v2 in-sample before Sep 25)
+2026-09 v1 48.8% v2 51.7%  n= 2880 
+2026-10 v1 49.2% v2 51.1%  n= 2976 
+2026-11 v1 49.7% v2 53.2%  n= 965 
+max consecutive losses  v1 13 v2 10 (test)
+v2 test z vs 50%: 2.39 one-sided p=0.0085

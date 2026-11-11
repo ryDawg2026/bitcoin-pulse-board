@@ -1,0 +1,17 @@
+v1 by absolute volatility regime (96-candle realized vol quartile)
+calm       n=  3576 wins=  1793 hit= 50.1%  95%CI[48.5,51.8]
+mid-low    n=  3575 wins=  1754 hit= 49.1%  95%CI[47.4,50.7]
+mid-high   n=  3575 wins=  1688 hit= 47.2%  95%CI[45.6,48.9]
+wild       n=  3575 wins=  1736 hit= 48.6%  95%CI[46.9,50.2]
+
+v1 by trendiness (efficiency ratio, last 16 candles; low = chop)
+choppiest  n=  3576 wins=  1814 hit= 50.7%  95%CI[49.1,52.4]
+chop-ish   n=  3575 wins=  1737 hit= 48.6%  95%CI[47.0,50.2]
+trend-ish  n=  3575 wins=  1724 hit= 48.2%  95%CI[46.6,49.9]
+trendiest  n=  3575 wins=  1696 hit= 47.4%  95%CI[45.8,49.1]
+
+v1 high-confidence (>=80%) calls n=  5147 wins=  2411 hit= 46.8%  95%CI[45.5,48.2] 
+v1 low-confidence (<60%) calls n=  2170 wins=  1123 hit= 51.8%  95%CI[49.6,53.8]
+
+v1 INVERTED (always do the opposite), all windows n= 14301 wins=  7330 hit= 51.3%  95%CI[50.4,52.1]
+v1 losing-streak lengths: max 13  share of losses in streaks>=4: 0.313 ; expected for coin flip ~ 0

@@ -1,0 +1,10 @@
+per-signal standalone (sign of vote vs actual), nonzero votes only
+ema15  n= 14335 hit= 48.7%  CI[47.9,49.5]  corr(vote,ret)=-0.001
+ema1h  n= 14337 hit= 49.2%  CI[48.4,50.0]  corr(vote,ret)=+0.002
+rsi    n=  1304 hit= 53.7%  CI[51.0,56.4]  corr(vote,ret)=-0.022
+mom    n= 14334 hit= 48.1%  CI[47.3,49.0]  corr(vote,ret)=+0.009
+prem   n= 14335 hit= 50.9%  CI[50.1,51.7]  corr(vote,ret)=-0.008
+vol    n= 14337 hit= 48.3%  CI[47.4,49.1]  corr(vote,ret)=-0.010
+agree  n= 14125 hit= 48.9%  CI[48.1,49.7]  corr(vote,ret)=+0.007
+first half n=  7166 wins=  3477 hit= 48.5%  95%CI[47.4,49.7]
+second half n=  7171 wins=  3514 hit= 49.0%  95%CI[47.8,50.2]

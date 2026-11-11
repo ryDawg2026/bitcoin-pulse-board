@@ -1,0 +1,11 @@
+train 6047 test 2847
+imb1 FOLLOW  tr n=6047 hit=48.9% [47.6,50.2] | te n=2847 hit=48.7% [46.9,50.6]
+imb1 FADE    tr n=6047 hit=51.1% [49.8,52.4] | te n=2847 hit=51.3% [49.4,53.1]
+imb4 FOLLOW  tr n=6047 hit=48.6% [47.3,49.8] | te n=2847 hit=49.1% [47.3,50.9]
+imb4 FADE    tr n=6047 hit=51.4% [50.2,52.7] | te n=2847 hit=50.9% [49.1,52.7]
+imb1z FOLLOW  tr n=6047 hit=49.5% [48.2,50.8] | te n=2847 hit=49.6% [47.7,51.4]
+imb1z FADE    tr n=6047 hit=50.5% [49.2,51.8] | te n=2847 hit=50.4% [48.6,52.3]
+funding > 0 -> UP  tr n=6047 hit=49.8% [48.5,51.1] | te n=2847 hit=48.8% [47.0,50.7]   (funding>0 share 0.921 )
+funding > 0 -> DOWN(fade) tr n=6047 hit=50.2% [48.9,51.5] | te n=2847 hit=51.2% [49.3,53.0]
+base v2-like               train 52.03% [50.8,53.3] | test 51.32% [49.5,53.2] {'z4c': np.float64(-0.049), 'z1c': np.float64(0.029), 'rsic': np.float64(-0.088), 'clvc': np.float64(-0.076), 'premc': np.float64(0.023)}
++ taker flow imb1z/imb4    train 52.47% [51.2,53.7] | test 50.83% [49.0,52.7] {'z4c': np.float64(-0.03), 'z1c': np.float64(0.038), 'rsic': np.float64(-0.091), 'clvc': np.float64(-0.065), 'premc': np.float64(0.02), 'imb1zc': np.float64(-0.036), 'imb4c': np.float64(-0.039)}

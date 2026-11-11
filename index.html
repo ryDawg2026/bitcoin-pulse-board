@@ -74,7 +74,7 @@ footer{color:var(--mut);font-size:12px;text-align:center;padding:10px 0 30px}
     <h2>Current call <span class="lockbadge" id="lockInfo"></span></h2>
     <div class="row" style="gap:20px">
       <div class="big" id="callDir">…</div>
-      <div class="kv"><b id="callConf">—</b><small>confidence</small></div>
+      <div class="kv"><b id="callConf">—</b><small>chance the called side is right (model estimate)</small></div>
       <div class="kv"><b id="callWin">—</b><small>window (local time)</small></div>
     </div>
     <div class="row" style="margin-top:12px">
@@ -104,6 +104,12 @@ footer{color:var(--mut);font-size:12px;text-align:center;padding:10px 0 30px}
     <div class="mut" style="margin-top:8px;font-size:13px" id="betMsg"></div>
   </section>
 </div>
+
+<section class="card" id="kalshiCard">
+  <h2>Kalshi “BTC up in next 15 mins?” market <span class="mut" style="text-transform:none;letter-spacing:0">(read-only public data · odds are the crowd’s, not ours · nothing here places an order)</span></h2>
+  <div id="kalshiBody" class="mut">Loading Kalshi…</div>
+  <div class="chartbox" style="height:210px;margin-top:10px"><canvas id="kalshiChart"></canvas></div>
+</section>
 
 <section class="card">
   <h2>Signal votes <span class="mut" style="text-transform:none;letter-spacing:0" id="sigMeta"></span></h2>
@@ -152,12 +158,12 @@ footer{color:var(--mut);font-size:12px;text-align:center;padding:10px 0 30px}
   <ol>
     <li><b>Data.</b> Your browser asks free, keyless public APIs of many exchanges and price sites for BTC/USD (or BTC/USDT) 15-minute candles and spot prices. Only sources that actually answered are used; the table shows which ones did.</li>
     <li><b>Consensus.</b> For each 15-minute candle, the median open and close across sources is the “consensus” — one bad feed can’t move it.</li>
-    <li><b>Call.</b> At each :00 / :15 / :30 / :45 (your local time) the engine looks only at candles that are already closed, scores seven signals, and locks an UP or DOWN call for the next 15 minutes. Locked calls are never edited.</li>
+    <li><b>Call.</b> At each :00 / :15 / :30 / :45 (your local time) the engine looks only at candles that are already closed, scores five mean-reversion signals, and locks an UP or DOWN call for the next 15 minutes. Locked calls are never edited.</li>
     <li><b>Grade.</b> At the next boundary the call is graded against the consensus candle: close above open = UP, below = DOWN, exactly equal = push (ignored).</li>
     <li><b>Backfill.</b> This page only runs while it’s open. On load it replays the engine over up to the last 12 hours of history it missed and grades those too, tagged <span class="pill bf">backfilled</span>. Only <span class="pill lv">live</span> calls were actually made before their window started.</li>
     <li><b>Bets.</b> Bet play money on the open call at even payout. Bets settle automatically when the call is graded. Everything is saved in this browser’s localStorage only — no accounts, no servers, no ads, no tracking.</li>
   </ol>
-  <p class="mut">Signal weights: 15m EMA trend 20% · 1h EMA trend 15% · RSI(14) extremes 15% · momentum (1–3 candles) 15% · USD-vs-USDT premium 15% · volume-weighted direction 10% · source agreement 10%. Score = Σ weight × vote (each vote −1…+1). Call = sign of the score. Confidence = 50 + 40·min(1,|score|/0.5) + 9·(share of sources whose last candle agrees), capped at 99 — a rough strength gauge, not a calibrated probability. Short-term BTC moves are close to a coin flip; expect the record to hover near 50%.</p>
+  <p class="mut"><b>Engine v2 (this version).</b> A 150-day backtest on real public candles showed the old trend-following engine called the wrong way more often than the right way (48.8% hit rate, and its “confidence” was backwards: its ≥80%-confidence calls hit 46.8%). Short-term BTC tends to <i>give back</i> overshoots, so v2 fades them: 1-hour vol-scaled overshoot, last-candle overshoot, RSI(14) extremes, where the last candle closed in its range, and the USD-vs-USDT premium. The coefficients were fitted only on data before 2026-09-25 and then frozen; on the 47 days after that (never used for fitting) it hit 51.8% vs 48.7% for v1. That is a small edge, not a money machine — expect long losing streaks (up to ~10 in a row in the test period). “Chance the called side is right” is the model’s own probability and is honestly only ~50–56%. “Conviction” calls are the stronger half of the signals (backtest 53.1% out-of-sample). Details and caveats: backtest/README.md.</p>
   </details>
 </section>
 
@@ -166,11 +172,13 @@ footer{color:var(--mut);font-size:12px;text-align:center;padding:10px 0 30px}
 </div>
 
 <script src="chart.umd.min.js"></script>
+<script src="engine.js"></script>
+<script src="kalshi.js"></script>
 <script>
 (function(){
 'use strict';
 var Q=900; // 15 minutes in seconds
-var START_BAL=1000, BACKFILL_N=48, MIN_HIST=60, MIN_SRC=3, CANDLES=300;
+var START_BAL=1000, BACKFILL_N=48, MIN_HIST=100, MIN_SRC=3, CANDLES=300;
 
 /* ---------- helpers ---------- */
 function $(id){return document.getElementById(id)}
@@ -241,71 +249,13 @@ function fetchSource(s){
   }).catch(function(e){r.ok=false;r.err=(e&&e.name==='AbortError')?'timeout':((e&&e.message)||'error').replace('Failed to fetch','blocked/CORS/network');r.ms=Date.now()-t0});
 }
 
-/* ---------- consensus ---------- */
+/* ---------- consensus + prediction engine: see engine.js (v2 mean-reversion engine; v1 kept there for the backtest) ---------- */
+var PE=window.PulseEngine;
 function buildConsensus(now){
   var ok=SOURCES.filter(function(s){return S[s.id].ok&&!s.price});
-  var times={};
-  ok.forEach(function(s){S[s.id].candles.forEach(function(k){if(k.t+Q<=now+1)times[k.t]=1})});
-  var need=Math.max(MIN_SRC,Math.floor(ok.length/2));
-  var cons={},ts=Object.keys(times).map(Number).sort(function(a,b){return a-b});
-  ts.forEach(function(t){
-    var os=[],cl=[],v=0,n=0,usd=[],usdt=[],up=0,dn=0;
-    ok.forEach(function(s){var k=S[s.id].map[t];if(!k)return;os.push(k.o);cl.push(k.c);v+=isFinite(k.v)?k.v:0;n++;
-      (s.q==='USD'?usd:usdt).push(k.c);if(k.c>k.o)up++;else if(k.c<k.o)dn++});
-    if(n>=need)cons[t]={t:t,o:median(os),c:median(cl),v:v,n:n,usd:usd.length?median(usd):NaN,usdt:usdt.length?median(usdt):NaN,up:up,dn:dn};
-  });
-  return {cons:cons,ts:ts.filter(function(t){return cons[t]}),ok:ok};
+  return PE.buildConsensus(ok,S,now,MIN_SRC);
 }
-
-/* ---------- indicators ---------- */
-function ema(a,n){if(a.length<n)return NaN;var k=2/(n+1),e=mean(a.slice(0,n));for(var i=n;i<a.length;i++)e=a[i]*k+e*(1-k);return e}
-function rsi(c,n){if(c.length<n+1)return NaN;var g=0,l=0,i;for(i=1;i<=n;i++){var d=c[i]-c[i-1];if(d>0)g+=d;else l-=d}g/=n;l/=n;
-  for(i=n+1;i<c.length;i++){var d2=c[i]-c[i-1];g=(g*(n-1)+Math.max(d2,0))/n;l=(l*(n-1)+Math.max(-d2,0))/n}
-  if(l===0)return 100;return 100-100/(1+g/l)}
-
-var WEIGHTS={ema15:.20,ema1h:.15,rsi:.15,mom:.15,prem:.15,vol:.10,agree:.10};
-
-/* predict the candle starting at W using only candles closed before W */
-function predictAt(W,C,okSrc){
-  var hist=C.ts.filter(function(t){return t<W});
-  if(hist.length<MIN_HIST)return null;
-  var cl=hist.map(function(t){return C.cons[t].c});
-  var last=hist[hist.length-1],sg=[];
-  function add(key,name,w,vote,desc){sg.push({k:key,name:name,w:w,vote:clamp(isFinite(vote)?vote:0,-1,1),desc:desc})}
-  // 1 EMA 15m
-  var e9=ema(cl,9),e21=ema(cl,21),x=e9/e21-1;
-  add('ema15','15m EMA trend (9 vs 21)',WEIGHTS.ema15,Math.tanh(x/0.0015),'EMA9 '+pct(x,3)+' vs EMA21');
-  // 2 EMA 1h
-  var hrs={};hist.forEach(function(t){var h=Math.floor(t/3600);(hrs[h]=hrs[h]||[]).push(t)});
-  var hc=Object.keys(hrs).map(Number).sort(function(a,b){return a-b}).filter(function(h){return hrs[h].length===4}).map(function(h){return C.cons[hrs[h][3]].c});
-  var h5=ema(hc,5),h12=ema(hc,12),hx=h5/h12-1;
-  add('ema1h','1h EMA trend (5 vs 12)',WEIGHTS.ema1h,isFinite(hx)?Math.tanh(hx/0.004):0,isFinite(hx)?('1h EMA5 '+pct(hx,3)+' vs EMA12'):'not enough 1h history');
-  // 3 RSI mean reversion at extremes
-  var r=rsi(cl.slice(-120),14),rv=0;
-  if(r>70)rv=-clamp((r-70)/20,0,1);else if(r<30)rv=clamp((30-r)/20,0,1);
-  add('rsi','RSI(14) extremes (mean-reversion)',WEIGHTS.rsi,rv,'RSI '+(isFinite(r)?r.toFixed(1):'—')+(r>70?' overbought → DOWN':r<30?' oversold → UP':' neutral zone → 0'));
-  // 4 momentum
-  var n=cl.length,r1=cl[n-1]/cl[n-2]-1,r2=cl[n-1]/cl[n-3]-1,r3=cl[n-1]/cl[n-4]-1,m=.5*r1+.3*r2+.2*r3;
-  add('mom','Momentum (last 1–3 candles)',WEIGHTS.mom,Math.tanh(m/0.002),'1c '+pct(r1)+' · 2c '+pct(r2)+' · 3c '+pct(r3));
-  // 5 premium USD vs USDT
-  var pr=[];hist.slice(-25).forEach(function(t){var k=C.cons[t];if(isFinite(k.usd)&&isFinite(k.usdt))pr.push(k.usd/k.usdt-1)});
-  var pv=0,pd='no USD/USDT pair data';
-  if(pr.length>=10){var cur=pr[pr.length-1],base=pr.slice(0,-1),sd=std(base);pv=Math.tanh(((cur-mean(base))/(sd||1e-5))/2);pd='USD-vs-USDT premium '+pct(cur,3)+' (z '+((cur-mean(base))/(sd||1e-5)).toFixed(2)+')'}
-  add('prem','Cross-exchange premium (USD vs USDT venues)',WEIGHTS.prem,pv,pd);
-  // 6 volume-weighted direction (last 4 candles, per source)
-  var sv=0,tv=0;
-  okSrc.forEach(function(s){hist.slice(-4).forEach(function(t){var k=S[s.id].map[t];if(!k||!isFinite(k.v))return;tv+=k.v;sv+=k.v*Math.sign(k.c-k.o)})});
-  var vv=tv?sv/tv:0;
-  add('vol','Volume-weighted direction (last 4)',WEIGHTS.vol,vv,'net signed volume '+(vv*100).toFixed(0)+'%');
-  // 7 source agreement on last closed candle
-  var lk=C.cons[last],tot=lk.up+lk.dn,ag=tot?(lk.up-lk.dn)/tot:0;
-  add('agree','Source agreement (last candle)',WEIGHTS.agree,ag,lk.up+' sources up · '+lk.dn+' down');
-  var score=sg.reduce(function(a,s){s.contrib=s.w*s.vote;return a+s.contrib},0);
-  var dir=score>0?'UP':score<0?'DOWN':(r1>=0?'UP':'DOWN');
-  var agreeShare=tot?((dir==='UP'?lk.up:lk.dn)/tot):.5;
-  var conf=Math.min(99,Math.round(50+40*Math.min(1,Math.abs(score)/0.5)+9*agreeShare));
-  return {dir:dir,score:score,conf:conf,signals:sg,basis:last,nSrc:lk.n};
-}
+function predictAt(W,C,okSrc){return PE.predictV2(W,C,okSrc,S)}
 
 /* ---------- calls, grading, bets ---------- */
 function gradeCall(c,C){
@@ -322,7 +272,7 @@ function gradeCall(c,C){
 }
 function makeCall(W,kind,C,okSrc){
   var p=predictAt(W,C,okSrc);if(!p)return null;
-  var c={W:W,dir:p.dir,conf:p.conf,score:p.score,signals:p.signals.map(function(s){return {k:s.k,name:s.name,w:s.w,vote:s.vote,desc:s.desc}}),kind:kind,madeAt:nowS(),nSrc:p.nSrc,basis:p.basis};
+  var c={W:W,eng:'v2',strong:!!p.strong,dir:p.dir,conf:p.conf,score:p.score,signals:p.signals.map(function(s){return {k:s.k,name:s.name,w:s.w,vote:s.vote,desc:s.desc}}),kind:kind,madeAt:nowS(),nSrc:p.nSrc,basis:p.basis};
   state.calls[W]=c;return c;
 }
 function runEngine(){
@@ -343,9 +293,10 @@ function runEngine(){
 }
 
 function stats(){
-  var ks=Object.keys(state.calls).map(Number).sort(function(a,b){return a-b}),o={all:{w:0,l:0},live:{w:0,l:0},bf:{w:0,l:0},bw:0,bl:0,bp:0,pnl:0,bal:START_BAL,ks:ks};
+  var ks=Object.keys(state.calls).map(Number).sort(function(a,b){return a-b}),o={all:{w:0,l:0},live:{w:0,l:0},bf:{w:0,l:0},v2:{w:0,l:0},v2s:{w:0,l:0},v1:{w:0,l:0},bw:0,bl:0,bp:0,pnl:0,bal:START_BAL,ks:ks};
   ks.forEach(function(w){var c=state.calls[w];
-    if(c.res==='win'||c.res==='loss'){var s=c.kind==='live'?o.live:o.bf;if(c.res==='win'){o.all.w++;s.w++}else{o.all.l++;s.l++}}
+    if(c.res==='win'||c.res==='loss'){var s=c.kind==='live'?o.live:o.bf;var win=c.res==='win';if(win){o.all.w++;s.w++}else{o.all.l++;s.l++}
+      var e=c.eng==='v2'?o.v2:o.v1;if(win)e.w++;else e.l++;if(c.eng==='v2'&&c.strong){if(win)o.v2s.w++;else o.v2s.l++}}
     if(c.bet&&c.bet.placedAt>=state.resetAt&&c.bet.res){ if(c.bet.res==='win')o.bw++;else if(c.bet.res==='loss')o.bl++;else o.bp++;o.pnl+=c.bet.pnl}});
   o.bal=START_BAL+o.pnl;return o;
 }
@@ -359,7 +310,7 @@ function render(){
   // current call
   if(cur){
     $('callDir').textContent=(cur.dir==='UP'?'▲ UP':'▼ DOWN');$('callDir').className='big '+(cur.dir==='UP'?'up-t':'dn-t');
-    $('callConf').textContent=cur.conf+'%';
+    $('callConf').textContent=cur.conf+'%'+(cur.eng==='v2'?(cur.strong?' · conviction':' · lean'):'');
     $('callWin').textContent=hhmm(cur.W)+' – '+hhmm(cur.W+Q);
     var late=cur.madeAt-cur.W;
     $('lockInfo').innerHTML='🔒 locked '+hhmmss(cur.madeAt)+(late>90?' (page opened mid-window)':'');
@@ -381,18 +332,19 @@ function render(){
   if(cur){
     sgEl.innerHTML=cur.signals.map(function(s){
       var w=Math.abs(s.vote)*50,col=s.vote>=0?'var(--up)':'var(--dn)',left=s.vote>=0?50:50-w;
-      return '<div class="sig"><div class="nm">'+esc(s.name)+'<small>'+esc(s.desc)+'</small></div><div class="bar"><i style="left:'+left+'%;width:'+w+'%;background:'+col+'"></i></div><div class="'+(s.vote>=0?'up-t':'dn-t')+'" style="text-align:right">'+(s.vote>=0?'+':'')+s.vote.toFixed(2)+'</div><div class="w mut" style="text-align:right">w '+Math.round(s.w*100)+'%</div></div>';
+      return '<div class="sig"><div class="nm">'+esc(s.name)+'<small>'+esc(s.desc)+'</small></div><div class="bar"><i style="left:'+left+'%;width:'+w+'%;background:'+col+'"></i></div><div class="'+(s.vote>=0?'up-t':'dn-t')+'" style="text-align:right">'+(s.vote>=0?'+':'')+s.vote.toFixed(2)+'</div><div class="w mut" style="text-align:right">'+(cur.eng==='v2'?'coef '+s.w.toFixed(2):'w '+Math.round(s.w*100)+'%')+'</div></div>';
     }).join('');
-    $('sigMeta').textContent='score '+(cur.score>=0?'+':'')+cur.score.toFixed(3)+' → '+cur.dir+' · '+cur.nSrc+' sources in consensus';
+    $('sigMeta').textContent=(cur.eng==='v2'?'logit '+(cur.score>=0?'+':'')+cur.score.toFixed(3)+' → '+cur.dir+' ('+cur.conf+'%'+(cur.strong?', conviction call':', lean — below the conviction line')+')':'score '+(cur.score>=0?'+':'')+cur.score.toFixed(3)+' → '+cur.dir)+' · '+cur.nSrc+' sources in consensus';
   }else{sgEl.textContent='Waiting for data…';$('sigMeta').textContent=''}
   // records
   function rec(w,l,label){var n=w+l;return '<div class="kv"><small>'+label+'</small><b>'+w+' W / '+l+' L</b><small>'+(n?(w/n*100).toFixed(1)+'% win rate':'no graded calls')+'</small></div>'}
-  $('engRec').innerHTML=rec(st.all.w,st.all.l,'All calls')+rec(st.live.w,st.live.l,'Live only')+rec(st.bf.w,st.bf.l,'Backfilled only');
+  $('engRec').innerHTML=rec(st.v2.w,st.v2.l,'v2 engine · all calls')+rec(st.v2s.w,st.v2s.l,'v2 · conviction calls only')+rec(st.live.w,st.live.l,'Live only (any engine)')+(st.v1.w+st.v1.l?rec(st.v1.w,st.v1.l,'Old v1 engine (legacy log)'):'');
   var bn=st.bw+st.bl;
   $('usrRec').innerHTML='<div class="kv"><small>Balance</small><b>'+fmtM(st.bal)+'</b><small>'+(st.pnl>=0?'+':'')+fmtM(st.pnl)+' vs $1,000</small></div><div class="kv"><small>Bets won / lost</small><b>'+st.bw+' / '+st.bl+'</b><small>'+(st.bp?st.bp+' push':'')+'</small></div><div class="kv"><small>Win rate</small><b>'+(bn?(st.bw/bn*100).toFixed(1)+'%':'—')+'</b></div>';
   $('bal').textContent=fmtM(st.bal);$('betWL').textContent=st.bw+' / '+st.bl;$('betRate').textContent=bn?(st.bw/bn*100).toFixed(1)+'%':'—';
   renderBetControls(cur,st);
-  renderSources(med);renderLog(st);renderCharts(st);
+  window.__pulseNow={med:med,call:cur,calls:state.calls};
+  renderSources(med);renderLog(st);renderCharts(st);if(window.KalshiPanel&&window.__kalshiReady)window.KalshiPanel.rerender();
 }
 function renderBetControls(cur,st){
   var avail=st.bal-0,can=!!cur&&!(cur.bet&&cur.bet.placedAt>=state.resetAt)&&cur.W+Q>nowS()&&avail>=1;
@@ -460,10 +412,10 @@ function resetBets(){
   save();render();
 }
 function csvExport(){
-  var h=['window_start_local','window_end_local','window_start_unix','type','call','confidence_pct','score','open','close','actual','engine_result','bet_side','bet_amount','bet_result','bet_pnl','bet_counted_in_current_record'];
+  var h=['window_start_local','window_end_local','window_start_unix','type','call','confidence_pct','score','open','close','actual','engine_result','bet_side','bet_amount','bet_result','bet_pnl','bet_counted_in_current_record','engine','conviction'];
   var rows=[h.join(',')];
   Object.keys(state.calls).map(Number).sort(function(a,b){return a-b}).forEach(function(w){var c=state.calls[w],b=c.bet||{};
-    rows.push([new Date(w*1000).toLocaleString(),new Date((w+Q)*1000).toLocaleString(),w,c.kind,c.dir,c.conf,(c.score||0).toFixed(4),c.open!=null?c.open.toFixed(2):'',c.close!=null?c.close.toFixed(2):'',c.actual||'',c.res||'',b.side||'',b.amt!=null?b.amt:'',b.res||'',b.pnl!=null?b.pnl:'',c.bet?(c.bet.placedAt>=state.resetAt?'yes':'no'):''].map(function(x){return '"'+String(x).replace(/"/g,'""')+'"'}).join(','))});
+    rows.push([new Date(w*1000).toLocaleString(),new Date((w+Q)*1000).toLocaleString(),w,c.kind,c.dir,c.conf,(c.score||0).toFixed(4),c.open!=null?c.open.toFixed(2):'',c.close!=null?c.close.toFixed(2):'',c.actual||'',c.res||'',b.side||'',b.amt!=null?b.amt:'',b.res||'',b.pnl!=null?b.pnl:'',c.bet?(c.bet.placedAt>=state.resetAt?'yes':'no'):'',c.eng||'v1',c.eng==='v2'?(c.strong?'yes':'no'):''].map(function(x){return '"'+String(x).replace(/"/g,'""')+'"'}).join(','))});
   var blob=new Blob([rows.join('\n')],{type:'text/csv'}),a=document.createElement('a');
   a.href=URL.createObjectURL(blob);a.download='bitcoin-pulse-log.csv';document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove()},500);
 }
@@ -503,6 +455,7 @@ $('tvBtn').onclick=function(){
 };
 render();schedule();setInterval(tick,1000);tick();
 refresh().then(function(){window.__pulseReady=true});
+if(window.KalshiPanel)window.KalshiPanel.start();
 window.__pulse={state:function(){return state},sources:S,engine:function(){return runEngine()}};
 })();
 </script>
