@@ -54,7 +54,7 @@ function render(d,ctx){
   var h='<div class="row" style="gap:20px"><div class="kv"><small>Kalshi odds BTC goes UP</small><b class="big '+(yes>=.5?'up-t':'dn-t')+'" style="font-size:34px">'+(isFinite(yes)?Math.round(yes*100)+'%':'—')+'</b></div>'
    +'<div class="kv"><small>UP (yes) bid / ask</small><b>'+cents(num(m.yes_bid_dollars))+' / '+cents(num(m.yes_ask_dollars))+'</b></div>'
    +'<div class="kv"><small>strike (price at window start)</small><b>$'+(isFinite(strike)?strike.toLocaleString('en-US',{minimumFractionDigits:2}):'—')+'</b></div>'
-   +'<div class="kv"><small>BTC now (board consensus)</small><b>'+(ctx&&isFinite(ctx.price)?'$'+ctx.price.toLocaleString('en-US',{minimumFractionDigits:2}):'—')+'</b><small class="'+(ctx&&ctx.price>strike?'up-t':'dn-t')+'">'+(ctx&&isFinite(ctx.price)&&isFinite(strike)?((ctx.price-strike>=0?'+':'−')+'$'+Math.abs(ctx.price-strike).toFixed(2)+' vs strike'):'')+'</small></div>'
+   +'<div class="kv"><small>BTC now (board consensus)</small><b>'+(ctx&&isFinite(ctx.price)?'$'+ctx.price.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}):'—')+'</b><small class="'+(ctx&&ctx.price>strike?'up-t':'dn-t')+'">'+(ctx&&isFinite(ctx.price)&&isFinite(strike)?((ctx.price-strike>=0?'+':'−')+'$'+Math.abs(ctx.price-strike).toFixed(2)+' vs strike'):'')+'</small></div>'
    +'<div class="kv"><small>closes in</small><b id="kClock" data-close="'+close+'">'+mmss(close-now)+'</b></div>'
    +'<div class="kv"><small>volume</small><b>'+(num(m.volume_fp)?Math.round(num(m.volume_fp)).toLocaleString():'—')+'</b></div>'
    +'<div style="margin-left:auto">'+via+'</div></div>';
