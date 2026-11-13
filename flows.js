@@ -167,6 +167,6 @@ function start(){
   var w=setInterval(function(){if(isFinite(price())){clearInterval(w);FEED.tx.next=FEED.bin.next=FEED.okx.next=0;tickFeeds()}},1000);
   window.__flowsReady=true;
 }
-window.FlowTracker={start:start,addLiq:addLiq,liqFail:liqFail,bcSample:bcSample,summary:summary,coverage:coverageFor,records:function(){return S.recs},render:render,
+window.FlowTracker={start:start,addLiq:addLiq,liqFail:liqFail,bcSample:bcSample,summary:summary,coverage:coverageFor,records:function(){return S.recs},buckets:function(){return S.bk},render:render,
   _add:addRec,_tier:tier,_clear:clear,_state:function(){return S},_status:function(){return FEED},_cover:cover};
 })();

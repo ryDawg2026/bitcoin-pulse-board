@@ -303,5 +303,5 @@ function snapshot(W){
   var es=eventState(n);if(es.sit)o.sit=es.sit.name;
   return Object.keys(o).length?o:null;
 }
-window.ContextPanel={start:start,snapshot:snapshot,onKalshi:onKalshi,_etToUnix:etToUnix,_events:EVENTS,_eventState:eventState,_regime:regime};
+window.ContextPanel={start:start,snapshot:snapshot,obRows:function(){return OB&&OB.rows||[]},onKalshi:onKalshi,_etToUnix:etToUnix,_events:EVENTS,_eventState:eventState,_regime:regime};
 })();
