@@ -61,6 +61,12 @@ footer{color:var(--mut);font-size:12px;text-align:center;padding:10px 0 30px}
 .ctxalert{display:none;padding:8px 12px;border-radius:10px;margin-bottom:12px;font-size:13px}.ctxalert.red{background:#3a1218;border:1px solid var(--dn);color:#ffb3bf}.ctxalert.amber{background:#3a2a10;border:1px solid #7a5a1c;color:#ffd48a}
 .noedge{color:var(--mut)!important}.pill.warn{color:#ffb454;border-color:rgba(255,180,84,.5)}.pill.bad.warn{color:#ffb454}
 details>summary{cursor:pointer}
+.gk{margin-bottom:0}.gkhead{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:17px}.gkhead b{font-size:18px}
+.gkwhy ul{margin:4px 0 4px;padding-left:18px;font-size:13.5px}.gkwhy li{margin:3px 0}
+.gkfoot{display:flex;flex-wrap:wrap;gap:6px 18px;margin-top:10px;padding-top:8px;border-top:1px dashed var(--line);font-size:13px;color:var(--mut)}.gkfoot b{color:var(--tx)}
+.gknote{font-size:12.5px;margin:8px 2px 12px}.gkgrid{display:grid;grid-template-columns:1.7fr 1fr;gap:12px}@media(max-width:860px){.gkgrid{grid-template-columns:1fr}}
+.ftab{font-size:12.5px;white-space:nowrap}.ftab th,.ftab td{padding:5px 5px}.ftab td.l{white-space:normal}.ftab tr.tot td{border-top:1px solid var(--line);font-weight:600}
+select{font:inherit;color:var(--tx);background:#0d1320;border:1px solid var(--line);border-radius:10px;padding:6px 8px}
 </style>
 </head>
 <body>
@@ -78,6 +84,17 @@ details>summary{cursor:pointer}
 
 <div class="banner" id="banner"></div>
 <div class="ctxalert" id="ctxAlert"></div>
+
+<div class="grid g2" id="grokkyRow">
+  <section class="card gk" id="gk1" aria-label="Grokky 1"></section>
+  <section class="card gk" id="gk2" aria-label="Grokky 2"></section>
+</div>
+<div class="mut gknote"><b>Paper picks only — no bets, no orders, nothing is sent to Kalshi.</b> Each 15-minute window, Grokky 1 takes the v2 engine’s side and Grokky 2 always takes the opposite side, locked when the window opens (or, if this page is opened mid-window, as soon as the engine has its call; the engine only uses closed candles, so that is not hindsight). At the open Kalshi’s price is ~50¢ by design, so it cannot choose a side; it is only cited. Reasons use only data that actually loaded. Rounds are scored against Kalshi’s real settlement. The tally lives in this browser and only advances while a tab is open.</div>
+<section class="card" id="gkCard">
+  <h2>Grokky 1 vs Grokky 2 — scoreboard <span class="mut" style="text-transform:none;letter-spacing:0">(scored against Kalshi’s real settlement · started fresh on 2026-11-12)</span></h2>
+  <div id="gkScore" class="mut">Loading…</div>
+  <div class="row" style="margin-top:8px"><button class="small" id="gkCsv">⬇ Export rounds CSV</button><span class="mut" style="font-size:12px">One of them is right every round, so this is a head-to-head, not proof of skill. The engine’s backtested edge is small (~50–52%).</span></div>
+</section>
 
 <div class="grid g2">
   <section class="card" id="callCard">
@@ -136,6 +153,15 @@ details>summary{cursor:pointer}
   </div>
 </section>
 
+<section class="card" id="flowCard">
+  <h2>Large transfers &amp; trades tracker <span class="mut" style="text-transform:none;letter-spacing:0">(≥ $25,000 · read-only context · none of this feeds the engine)</span></h2>
+  <div class="mut" style="font-size:12.5px;margin-bottom:8px"><b>Read this first.</b> On-chain items are large <b>transfers</b> seen in the Bitcoin mempool: the amount includes change sent back to the sender, and nothing tells us whether it is a buy, a sale or a wallet shuffle, so no direction is shown. Exchange items are real <b>trades</b> with the exchange-reported taker side. Everything is counted only while this page is open, so each total shows how long it was actually watched. Earlier backtests found large flows did not predict 15-minute moves beyond Kalshi’s price.</div>
+  <div id="flowStatus"></div>
+  <div id="flowSum" style="margin-top:10px"></div>
+  <div class="row" style="margin:12px 0 6px"><label class="mut" style="font-size:13px">Latest items <select id="flowKind"><option value="all">all types</option><option value="tx">on-chain transfers</option><option value="tr">exchange trades</option><option value="lq">liquidations</option></select></label><button class="small" id="flowCsv">⬇ Export CSV</button><button class="small" id="flowClear">Clear</button><span class="mut" style="font-size:12px" id="flowMeta"></span></div>
+  <div class="logwrap tw" id="flowList" style="max-height:340px"></div>
+</section>
+
 <section class="card">
   <h2>Signal votes <span class="mut" style="text-transform:none;letter-spacing:0" id="sigMeta"></span></h2>
   <div id="signals" class="mut">Loading…</div>
@@ -169,7 +195,7 @@ details>summary{cursor:pointer}
 
 <section class="card">
   <h2>Prediction log</h2>
-  <div class="row" style="margin-bottom:8px"><button class="small" id="csvBtn">⬇ Export CSV</button><label class="mut" style="font-size:13px"><input type="checkbox" id="hideBf"> hide backfilled</label><span class="mut" style="font-size:12px" id="logMeta"></span></div>
+  <div class="row" style="margin-bottom:8px"><button class="small" id="csvBtn">⬇ Export CSV</button><span class="mut" style="font-size:12px" id="logMeta"></span></div>
   <div class="logwrap tw"><table id="logTable"><thead><tr>
     <th class="l">Window</th><th class="l">Type</th><th>Call</th><th>Conf</th><th>Open</th><th>Close</th><th>Actual</th><th>Result</th><th>Your bet</th><th>Bet result</th>
   </tr></thead><tbody></tbody></table></div>
@@ -185,7 +211,8 @@ details>summary{cursor:pointer}
     <li><b>Consensus.</b> For each 15-minute candle, the median open and close across sources is the “consensus” — one bad feed can’t move it.</li>
     <li><b>Call.</b> At each :00 / :15 / :30 / :45 (your local time) the engine looks only at candles that are already closed, scores five mean-reversion signals, and locks an UP or DOWN call for the next 15 minutes. Locked calls are never edited.</li>
     <li><b>Grade.</b> At the next boundary the call is graded against the consensus candle: close above open = UP, below = DOWN, exactly equal = push (ignored).</li>
-    <li><b>Backfill.</b> This page only runs while it’s open. On load it replays the engine over up to the last 12 hours of history it missed and grades those too, tagged <span class="pill bf">backfilled</span>. Only <span class="pill lv">live</span> calls were actually made before their window started.</li>
+    <li><b>No backfill.</b> This page only runs while it’s open and only logs calls it actually locked. Since the 2026-11-12 reset there is no replay of missed windows: the log, the Grokky tally and your play-money record all started from zero.</li>
+    <li><b>Grokky 1 vs 2.</b> Two paper-only pickers split every window: Grokky 1 takes the engine’s side, Grokky 2 the opposite one. Each is scored against Kalshi’s real settlement (final value vs strike), so exactly one is right per round, including “no edge” rounds.</li>
     <li><b>Bets.</b> Bet play money on the open call at even payout. Bets settle automatically when the call is graded. Everything is saved in this browser’s localStorage only — no accounts, no servers, no ads, no tracking.</li>
   </ol>
   <p class="mut"><b>Engine v2 (this version).</b> A 150-day backtest on real public candles showed the old trend-following engine called the wrong way more often than the right way (48.8% hit rate, and its “confidence” was backwards: its ≥80%-confidence calls hit 46.8%). Short-term BTC tends to <i>give back</i> overshoots, so v2 fades them: 1-hour vol-scaled overshoot, last-candle overshoot, RSI(14) extremes, where the last candle closed in its range, and the USD-vs-USDT premium. The coefficients were fitted only on data before 2026-09-25 and then frozen; on the 47 days after that (never used for fitting) it hit 51.8% vs 48.7% for v1. That is a small edge, not a money machine — expect long losing streaks (up to ~10 in a row in the test period). “Chance the called side is right” is the model’s own probability and is honestly only ~50–56%. “Conviction” calls are the stronger half of the signals (backtest 53.1% out-of-sample). Details and caveats: backtest/README.md.</p>
@@ -196,16 +223,23 @@ details>summary{cursor:pointer}
 <footer>Bitcoin Pulse Board · static page · no ads · no sign-in · no data collection · data stays in your browser</footer>
 </div>
 
+<script>
+/* ONE-TIME RESET ("Grokky rebuild", 2026-11-12): clears the old call history, play-money bets, the legacy v1 log and the old paper order-book log from THIS browser,
+   then the board starts fresh under new storage keys (pulseboard.v2, pulseboard.obook.v2, pulseboard.flows.v1). Runs before any other script reads storage. */
+(function(){try{var F='pulseboard.cleared.2026-11-12';if(!localStorage.getItem(F)){['pulseboard.v1','pulseboard.obook.v1'].forEach(function(k){localStorage.removeItem(k)});localStorage.setItem(F,String(Date.now()))}}catch(e){}})();
+</script>
 <script src="chart.umd.min.js"></script>
 <script src="engine.js"></script>
 <script>window.KALSHI_PROXY='https://kalshi-relay.rydawg2026.workers.dev'; /* read-only Cloudflare Worker, see tools/kalshi-proxy-worker.js */</script>
 <script src="kalshi.js"></script>
+<script src="flows.js"></script>
 <script src="context.js"></script>
+<script src="grokky.js"></script>
 <script>
 (function(){
 'use strict';
 var Q=900; // 15 minutes in seconds
-var START_BAL=1000, BACKFILL_N=48, MIN_HIST=100, MIN_SRC=3, CANDLES=300;
+var START_BAL=1000, MIN_HIST=100, MIN_SRC=3, CANDLES=300;
 
 /* ---------- helpers ---------- */
 function $(id){return document.getElementById(id)}
@@ -226,9 +260,9 @@ function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp
 
 /* ---------- storage (localStorage only) ---------- */
 var memOnly=false, state;
-function freshState(){return {v:1,calls:{},resetAt:0}}
-function load(){try{var s=JSON.parse(localStorage.getItem('pulseboard.v1')||'null');if(s&&s.calls)return s}catch(e){}return freshState()}
-function save(){try{localStorage.setItem('pulseboard.v1',JSON.stringify(state))}catch(e){memOnly=true;banner('Browser storage is unavailable, so your log and bets will not persist after closing this page.')}}
+function freshState(){return {v:2,calls:{},groks:{},resetAt:0}}
+function load(){try{var s=JSON.parse(localStorage.getItem('pulseboard.v2')||'null');if(s&&s.calls){if(!s.groks)s.groks={};return s}}catch(e){}return freshState()}
+function save(){try{localStorage.setItem('pulseboard.v2',JSON.stringify(state))}catch(e){memOnly=true;banner('Browser storage is unavailable, so your log and bets will not persist after closing this page.')}}
 function banner(msg){var b=$('banner');b.textContent=msg;b.style.display=msg?'block':'none'}
 try{localStorage.setItem('pulseboard.test','1');localStorage.removeItem('pulseboard.test')}catch(e){memOnly=true}
 state=load();
@@ -308,9 +342,8 @@ function runEngine(){
   var W0=winStart(now),calls=state.calls;
   // live call for the current window
   if(!calls[W0])makeCall(W0,'live',C,C.ok);
-  // backfill missed past windows
-  for(var i=BACKFILL_N;i>=1;i--){var W=W0-i*Q;
-    if(!calls[W]&&C.cons[W]){var c=makeCall(W,'backfilled',C,C.ok);if(c){c.madeAt=now}}}
+  // (no backfill since the 2026-11-12 reset: history only contains calls actually locked while this page was open)
+  if(window.GrokkyPanel&&calls[W0])GrokkyPanel.lock(W0,calls[W0]);
   // grade whatever is finished
   Object.keys(calls).forEach(function(w){gradeCall(calls[w],C)});
   // prune very old (keep latest 2000)
@@ -320,10 +353,10 @@ function runEngine(){
 }
 
 function stats(){
-  var ks=Object.keys(state.calls).map(Number).sort(function(a,b){return a-b}),o={all:{w:0,l:0},live:{w:0,l:0},bf:{w:0,l:0},v2:{w:0,l:0},v2s:{w:0,l:0},v1:{w:0,l:0},kl:{w:0,l:0},kb:{w:0,l:0},kne:{w:0,l:0},bw:0,bl:0,bp:0,pnl:0,bal:START_BAL,ks:ks};
+  var ks=Object.keys(state.calls).map(Number).sort(function(a,b){return a-b}),o={all:{w:0,l:0},live:{w:0,l:0},bf:{w:0,l:0},v2:{w:0,l:0},v2s:{w:0,l:0},kl:{w:0,l:0},kb:{w:0,l:0},kne:{w:0,l:0},bw:0,bl:0,bp:0,pnl:0,bal:START_BAL,ks:ks};
   ks.forEach(function(w){var c=state.calls[w];
     if(c.res==='win'||c.res==='loss'){var s=c.kind==='live'?o.live:o.bf;var win=c.res==='win';if(win){o.all.w++;s.w++}else{o.all.l++;s.l++}
-      var e=c.eng==='v2'?o.v2:o.v1;if(win)e.w++;else e.l++;if(c.eng==='v2'&&c.strong){if(win)o.v2s.w++;else o.v2s.l++}}
+      var e=o.v2;if(win)e.w++;else e.l++;if(c.strong){if(win)o.v2s.w++;else o.v2s.l++}}
     if(c.kres){var ks2=c.kind==='live'?o.kl:o.kb;if(c.kres==='win')ks2.w++;else ks2.l++;if(c.noedge){if(c.kres==='win')o.kne.w++;else o.kne.l++}}
     if(c.bet&&c.bet.placedAt>=state.resetAt&&c.bet.res){ if(c.bet.res==='win')o.bw++;else if(c.bet.res==='loss')o.bl++;else o.bp++;o.pnl+=c.bet.pnl}});
   o.bal=START_BAL+o.pnl;return o;
@@ -367,14 +400,14 @@ function render(){
   }else{sgEl.textContent='Waiting for data…';$('sigMeta').textContent=''}
   // records
   function rec(w,l,label){var n=w+l;return '<div class="kv"><small>'+label+'</small><b>'+w+' W / '+l+' L</b><small>'+(n?(w/n*100).toFixed(1)+'% win rate':'no graded calls')+'</small></div>'}
-  $('engRec').innerHTML=rec(st.v2.w,st.v2.l,'v2 engine · all calls')+rec(st.v2s.w,st.v2s.l,'v2 · conviction calls only')+rec(st.live.w,st.live.l,'Live only (any engine)')+(st.kl.w+st.kl.l+st.kb.w+st.kb.l?rec(st.kl.w,st.kl.l,'LIVE calls vs Kalshi settlement')+rec(st.kb.w,st.kb.l,'Backfilled calls vs Kalshi settlement')+(st.kne.w+st.kne.l?rec(st.kne.w,st.kne.l,'…of which “no edge” calls'):''):'')+(st.v1.w+st.v1.l?rec(st.v1.w,st.v1.l,'Old v1 engine (legacy log)'):'');
+  $('engRec').innerHTML=rec(st.v2.w,st.v2.l,'Engine · all calls since reset')+rec(st.v2s.w,st.v2s.l,'v2 · conviction calls only')+rec(st.live.w,st.live.l,'Live only (any engine)')+(st.kl.w+st.kl.l+st.kb.w+st.kb.l?rec(st.kl.w,st.kl.l,'Engine calls vs Kalshi settlement')+(st.kne.w+st.kne.l?rec(st.kne.w,st.kne.l,'…of which “no edge” calls'):''):'');
   var bn=st.bw+st.bl;
   $('usrRec').innerHTML='<div class="kv"><small>Balance</small><b>'+fmtM(st.bal)+'</b><small>'+(st.pnl>=0?'+':'')+fmtM(st.pnl)+' vs $1,000</small></div><div class="kv"><small>Bets won / lost</small><b>'+st.bw+' / '+st.bl+'</b><small>'+(st.bp?st.bp+' push':'')+'</small></div><div class="kv"><small>Win rate</small><b>'+(bn?(st.bw/bn*100).toFixed(1)+'%':'—')+'</b></div>';
   $('bal').textContent=fmtM(st.bal);$('betWL').textContent=st.bw+' / '+st.bl;$('betRate').textContent=bn?(st.bw/bn*100).toFixed(1)+'%':'—';
   renderBetControls(cur,st);
   var cl=C&&C.ts?C.ts.slice(-120):[],lc=cl.length?C.cons[cl[cl.length-1]]:null;
-  window.__pulseNow={med:med,call:cur,calls:state.calls,closes:cl.map(function(t){return C.cons[t].c}),prem:lc&&isFinite(lc.usd)&&isFinite(lc.usdt)?lc.usd/lc.usdt-1:NaN};
-  renderSources(med);renderLog(st);renderCharts(st);if(window.KalshiPanel&&window.__kalshiReady)window.KalshiPanel.rerender();
+  window.__pulseNow={med:med,winOpen:ko,call:cur,calls:state.calls,closes:cl.map(function(t){return C.cons[t].c}),prem:lc&&isFinite(lc.usd)&&isFinite(lc.usdt)?lc.usd/lc.usdt-1:NaN};
+  renderSources(med);renderLog(st);renderCharts(st);if(window.GrokkyPanel)GrokkyPanel.update();if(window.KalshiPanel&&window.__kalshiReady)window.KalshiPanel.rerender();
 }
 function renderBetControls(cur,st){
   var avail=st.bal-0,can=!!cur&&!(cur.bet&&cur.bet.placedAt>=state.resetAt)&&cur.W+Q>nowS()&&avail>=1;
@@ -396,7 +429,7 @@ function renderSources(med){
   $('srcMeta').textContent=okN+' of '+SOURCES.length+' reachable · median '+fmtP(med);
 }
 function renderLog(st){
-  var hide=$('hideBf').checked,rows=[];
+  var hide=false,rows=[];
   var ks=st.ks.slice().reverse();var shown=0;
   ks.forEach(function(w){var c=state.calls[w];if(hide&&c.kind==='backfilled')return;if(shown>=300)return;shown++;
     var b=c.bet&&c.bet.placedAt>=state.resetAt?c.bet:null,old=c.bet&&!b;
@@ -445,7 +478,7 @@ function csvExport(){
   var h=['window_start_local','window_end_local','window_start_unix','type','call','confidence_pct','score','open','close','actual','engine_result','bet_side','bet_amount','bet_result','bet_pnl','bet_counted_in_current_record','engine','conviction','no_edge','vs_kalshi_settlement','kalshi_expiration_value'];
   var rows=[h.join(',')];
   Object.keys(state.calls).map(Number).sort(function(a,b){return a-b}).forEach(function(w){var c=state.calls[w],b=c.bet||{};
-    rows.push([new Date(w*1000).toLocaleString(),new Date((w+Q)*1000).toLocaleString(),w,c.kind,c.dir,c.conf,(c.score||0).toFixed(4),c.open!=null?c.open.toFixed(2):'',c.close!=null?c.close.toFixed(2):'',c.actual||'',c.res||'',b.side||'',b.amt!=null?b.amt:'',b.res||'',b.pnl!=null?b.pnl:'',c.bet?(c.bet.placedAt>=state.resetAt?'yes':'no'):'',c.eng||'v1',c.eng==='v2'?(c.strong?'yes':'no'):'',c.eng==='v2'?(c.noedge?'yes':'no'):'',c.kres||'',c.kexp!=null&&isFinite(c.kexp)?c.kexp:''].map(function(x){return '"'+String(x).replace(/"/g,'""')+'"'}).join(','))});
+    rows.push([new Date(w*1000).toLocaleString(),new Date((w+Q)*1000).toLocaleString(),w,c.kind,c.dir,c.conf,(c.score||0).toFixed(4),c.open!=null?c.open.toFixed(2):'',c.close!=null?c.close.toFixed(2):'',c.actual||'',c.res||'',b.side||'',b.amt!=null?b.amt:'',b.res||'',b.pnl!=null?b.pnl:'',c.bet?(c.bet.placedAt>=state.resetAt?'yes':'no'):'',c.eng||'v2',c.eng==='v2'?(c.strong?'yes':'no'):'',c.eng==='v2'?(c.noedge?'yes':'no'):'',c.kres||'',c.kexp!=null&&isFinite(c.kexp)?c.kexp:''].map(function(x){return '"'+String(x).replace(/"/g,'""')+'"'}).join(','))});
   var blob=new Blob([rows.join('\n')],{type:'text/csv'}),a=document.createElement('a');
   a.href=URL.createObjectURL(blob);a.download='bitcoin-pulse-log.csv';document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove()},500);
 }
@@ -468,7 +501,7 @@ function tick(){
   var left=Math.max(0,Math.ceil((nextAt-Date.now())/1000)),m=Math.floor(left/60),s=left%60;
   $('countdown').textContent=(m<10?'0':'')+m+':'+(s<10?'0':'')+s;
   // keep open-window bits fresh without refetching
-  var cur=state.calls[winStart(nowS())];renderBetControls(cur,stats());
+  var cur=state.calls[winStart(nowS())];renderBetControls(cur,stats());if(window.GrokkyPanel)GrokkyPanel.update();
   if(!refreshing&&document.visibilityState==='visible'&&!cur&&Date.now()-lastRefresh*1000>60000&&lastRefresh)refresh();
 }
 document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible'&&lastRefresh&&winStart(nowS())>winStart(lastRefresh)){refresh();schedule()}});
@@ -476,15 +509,16 @@ document.addEventListener('visibilitychange',function(){if(document.visibilitySt
 /* ---------- wire up ---------- */
 $('refreshBtn').onclick=function(){refresh()};
 $('betUp').onclick=function(){placeBet('UP')};$('betDown').onclick=function(){placeBet('DOWN')};
-$('resetBtn').onclick=resetBets;$('csvBtn').onclick=csvExport;$('hideBf').onchange=function(){renderLog(stats())};
+$('resetBtn').onclick=resetBets;$('csvBtn').onclick=csvExport;
 Array.prototype.forEach.call(document.querySelectorAll('[data-pct]'),function(b){b.onclick=function(){var st=stats();$('betAmt').value=Math.max(1,Math.floor(st.bal*b.getAttribute('data-pct')/100))}});
 $('tvBtn').onclick=function(){
   var box=$('tvBox');box.innerHTML='<div class="tradingview-widget-container"><div id="tvw"></div></div>';
   var s=document.createElement('script');s.src='https://s3.tradingview.com/tv.js';s.onload=function(){new TradingView.widget({container_id:'tvw',symbol:'COINBASE:BTCUSD',interval:'15',theme:'dark',autosize:false,width:'100%',height:420,timezone:'exchange',style:'1',hide_side_toolbar:true,allow_symbol_change:false})};
   s.onerror=function(){box.textContent='TradingView could not be loaded.'};document.body.appendChild(s);this.disabled=true;
 };
+if(window.GrokkyPanel)GrokkyPanel.init({state:function(){return state},save:save});
 render();schedule();setInterval(tick,1000);tick();
-refresh().then(function(){window.__pulseReady=true;if(window.ContextPanel)window.ContextPanel.start()});
+refresh().then(function(){window.__pulseReady=true;if(window.ContextPanel)window.ContextPanel.start();if(window.FlowTracker)window.FlowTracker.start()});
 if(window.KalshiPanel)window.KalshiPanel.start();
 window.__pulse={save:save,rerender:function(){render()},state:function(){return state},sources:S,engine:function(){return runEngine()}};
 })();

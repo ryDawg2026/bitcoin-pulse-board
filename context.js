@@ -19,6 +19,8 @@ function mean(a){return a.reduce(function(x,y){return x+y},0)/(a.length||1)}
 function sd(a){if(a.length<2)return NaN;var m=mean(a);return Math.sqrt(a.reduce(function(s,x){return s+(x-m)*(x-m)},0)/(a.length-1))}
 function Phi(z){var t=1/(1+0.2316419*Math.abs(z)),d=0.3989423*Math.exp(-z*z/2),p=d*t*(0.3193815+t*(-0.3565638+t*(1.781478+t*(-1.821256+t*1.330274))));return z>0?1-p:p}
 function g(){return window.__pulseNow||{}}
+/* latest successful reading of each feed, for the Grokky rationales (read-only snapshot; never fed to the engine) */
+var SNAP={};
 function kp(){return window.KalshiPanel}
 
 /* ---------- box helpers ---------- */
@@ -30,7 +32,7 @@ function box(id,status,html,note){
   pill.textContent=status==='ok'?'live':status==='stale'?'stale':'unavailable';
   body.innerHTML=html+(note?'<div class="mut ctxnote">'+note+'</div>':'');
 }
-function unavailable(id,e,extra){box(id,'bad','<span class="mut">Unavailable — '+esc(why(e))+'.</span>'+(extra?' <span class="mut">'+extra+'</span>':''))}
+function unavailable(id,e,extra){if(id==='liq'&&window.FlowTracker)FlowTracker.liqFail(e);delete SNAP[({settle:'gap',book:'book',liq:'liq'})[id]||'_none'];box(id,'bad','<span class="mut">Unavailable — '+esc(why(e))+'.</span>'+(extra?' <span class="mut">'+extra+'</span>':''))}
 
 /* ---------- events calendar (official schedules) ---------- */
 // Sources: https://www.bls.gov/schedule/news_release/cpi.htm , .../empsit.htm , https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm (checked 2026-11-11)
@@ -105,6 +107,7 @@ function loadSettle(){
     var ts=d.live_data&&d.live_data.details&&d.live_data.details.timeseries;if(!ts||!ts.length)throw new Error('empty BRTI series');
     var last=ts[ts.length-1],v=last.v,age=nowS()-last.t/1000,strike=num(m.floor_strike),close=Date.parse(m.close_time)/1000,tl=close-nowS(),gap=v-strike;
     var sig15=isFinite(vol.v96)?vol.v96:NaN,price=g().med,sigRem=isFinite(sig15)&&isFinite(price)?price*sig15*Math.sqrt(Math.max(tl,1)/900):NaN,z=gap/sigRem,sig16=isFinite(vol.v16)?price*vol.v16*Math.sqrt(Math.max(tl,1)/900):NaN,z16=gap/sig16;
+    SNAP.gap={W:Math.round(close)-900,gap:gap,v:v,strike:strike,tl:tl,at:nowS(),age:age};
     var h='<div class="row" style="gap:16px"><div class="kv"><small>BRTI 60-s average now</small><b>'+usd(v)+'</b><small class="mut">'+ago(age)+' old</small></div><div class="kv"><small>strike (floor_strike)</small><b>'+usd(strike)+'</b></div>'
       +'<div class="kv"><small>gap</small><b class="'+(gap>=0?'up-t':'dn-t')+'">'+(gap>=0?'+':'−')+usd(Math.abs(gap))+'</b><small class="mut">'+(gap>=0?'UP if it ended now':'DOWN if it ended now')+'</small></div>'
       +'<div class="kv"><small>time left</small><b>'+mmss(tl)+'</b></div></div>';
@@ -114,7 +117,7 @@ function loadSettle(){
 }
 
 /* ---------- Kalshi: order book + paper-only log ---------- */
-var OBK='pulseboard.obook.v1',OB=null;
+var OBK='pulseboard.obook.v2',OB=null; // v2 key: the old v1 paper log is cleared by the one-time migration in index.html
 function obLoad(){try{var s=JSON.parse(localStorage.getItem(OBK)||'null');if(s&&s.rows)return s}catch(e){}return {v:1,rows:[],paper:{}}}
 function obSave(){try{localStorage.setItem(OBK,JSON.stringify(OB))}catch(e){}}
 OB=obLoad();
@@ -132,6 +135,7 @@ function loadBook(){
      +'<div class="kv"><small>size within 5¢ of best</small><b>UP '+Math.round(yd).toLocaleString()+' · DOWN '+Math.round(nd).toLocaleString()+'</b></div></div>'
      +'<div class="bar" style="margin:8px 0 2px"><i style="left:'+(imb>=0?50:50+imb*50)+'%;width:'+Math.abs(imb)*50+'%;background:'+(imb>=0?'var(--up)':'var(--dn)')+'"></i></div>'
      +'<div>Imbalance <b class="'+(imb>=0?'up-t':'dn-t')+'">'+(imb>=0?'+':'')+Math.round(imb*100)+'%</b> <span class="mut">('+(Math.abs(imb)<.15?'balanced':imb>0?'more resting size on the UP side':'more resting size on the DOWN side')+')</span></div>';
+    SNAP.book={W:Math.round(Date.parse(m.close_time)/1000)-900,imb:imb,at:nowS()};
     var P=paperUpdate(m,yb,ya,nb,imb,yd,nd,tl);
     h+=paperHtml();
     box('book','ok',h,'Resting limit orders on this Kalshi market. Mostly market-maker quotes; I have NOT found it predictive at 15 minutes, so it is context. The paper log below only records what a resting limit order would have done — nothing is ever sent to Kalshi.');
@@ -201,9 +205,9 @@ function onKalshi(d){
 /* ---------- derivatives context: funding, open interest, Fear & Greed, USD/USDT premium ---------- */
 function loadDeriv(){
   var items=[];
-  var a=J('https://www.okx.com/api/v5/public/funding-rate?instId=BTC-USDT-SWAP').then(function(d){var x=d.data[0];return '<div class="kv"><small>OKX perp funding (per 8 h)</small><b>'+(num(x.fundingRate)*100).toFixed(4)+'%</b><small class="mut">next '+new Date(+x.nextFundingTime||+x.fundingTime).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})+'</small></div>'},function(e){return '<div class="kv"><small>OKX funding</small><b class="mut">unavailable</b><small class="mut">'+esc(why(e))+'</small></div>'});
+  var a=J('https://www.okx.com/api/v5/public/funding-rate?instId=BTC-USDT-SWAP').then(function(d){var x=d.data[0];SNAP.funding={rate:num(x.fundingRate)*100,at:nowS()};return '<div class="kv"><small>OKX perp funding (per 8 h)</small><b>'+(num(x.fundingRate)*100).toFixed(4)+'%</b><small class="mut">next '+new Date(+x.nextFundingTime||+x.fundingTime).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})+'</small></div>'},function(e){return '<div class="kv"><small>OKX funding</small><b class="mut">unavailable</b><small class="mut">'+esc(why(e))+'</small></div>'});
   var b=J('https://www.okx.com/api/v5/public/open-interest?instId=BTC-USDT-SWAP').then(function(d){var x=d.data[0];return '<div class="kv"><small>OKX perp open interest</small><b>'+Math.round(num(x.oiCcy)).toLocaleString()+' BTC</b><small class="mut">≈ $'+(num(x.oiUsd)/1e9).toFixed(2)+'B · '+ago(nowS()-x.ts/1000)+' old</small></div>'},function(e){return '<div class="kv"><small>OKX open interest</small><b class="mut">unavailable</b><small class="mut">'+esc(why(e))+'</small></div>'});
-  var c=J('https://api.alternative.me/fng/?limit=1').then(function(d){var x=d.data[0];return '<div class="kv"><small>Fear &amp; Greed (daily)</small><b>'+esc(x.value)+' · '+esc(x.value_classification)+'</b><small class="mut">updated '+ago(nowS()-x.timestamp)+' ago</small></div>'},function(e){return '<div class="kv"><small>Fear &amp; Greed</small><b class="mut">unavailable</b><small class="mut">'+esc(why(e))+'</small></div>'});
+  var c=J('https://api.alternative.me/fng/?limit=1').then(function(d){var x=d.data[0];SNAP.fng={v:num(x.value),cls:String(x.value_classification||''),at:nowS()};return '<div class="kv"><small>Fear &amp; Greed (daily)</small><b>'+esc(x.value)+' · '+esc(x.value_classification)+'</b><small class="mut">updated '+ago(nowS()-x.timestamp)+' ago</small></div>'},function(e){return '<div class="kv"><small>Fear &amp; Greed</small><b class="mut">unavailable</b><small class="mut">'+esc(why(e))+'</small></div>'});
   var pm=g().prem,pr=isFinite(pm)?'<div class="kv"><small>USD vs USDT venues (premium)</small><b>'+(pm>=0?'+':'')+(pm*100).toFixed(3)+'%</b><small class="mut">board consensus, last closed candle</small></div>':'<div class="kv"><small>USD vs USDT premium</small><b class="mut">unavailable</b></div>';
   return Promise.all([a,b,c]).then(function(r){
     var ok=r.filter(function(x){return x.indexOf('unavailable')<0}).length;
@@ -221,6 +225,8 @@ function loadLiq(){
     rows.sort(function(a,b){return b.t-a.t});
     var now=nowS(),h1=rows.filter(function(x){return now-x.t<=3600}),L=h1.filter(function(x){return x.long}).reduce(function(s,x){return s+x.usd},0),S=h1.filter(function(x){return !x.long}).reduce(function(s,x){return s+x.usd},0);
     var oldest=rows.length?now-rows[rows.length-1].t:0;
+    SNAP.liq={L:L,S:S,n:h1.length,at:nowS()};
+    if(window.FlowTracker)FlowTracker.addLiq(rows);
     var h='<div class="row" style="gap:16px"><div class="kv"><small>longs liquidated, last 60 min</small><b class="dn-t">'+usd(L,0)+'</b></div><div class="kv"><small>shorts liquidated, last 60 min</small><b class="up-t">'+usd(S,0)+'</b></div><div class="kv"><small>events</small><b>'+h1.length+'</b></div></div>';
     h+=rows.slice(0,5).map(function(x){return '<div class="mut" style="font-size:13px">'+ago(now-x.t)+' ago · '+(x.long?'long':'short')+' liquidated · '+x.btc.toFixed(4)+' BTC ≈ '+usd(x.usd,0)+' @ '+usd(x.px,0)+'</div>'}).join('')||'<div class="mut">No liquidations in the sample OKX returned.</div>';
     box('liq','ok',h,'OKX BTC-USDT perpetual only (size = contracts × 0.01 BTC × bankruptcy price). OKX’s REST feed returns just the latest handful of events'+(rows.length&&oldest<3600?', so the 60-minute totals are a floor, not a full count':'')+'. Binance and Bybit liquidation feeds are geo-blocked / have no browser-friendly endpoint, so they are not included. Forced selling that already happened is context, not a forecast.');
@@ -230,7 +236,7 @@ function loadLiq(){
 /* ---------- whales: large unconfirmed BTC transfers (blockchain.info) ---------- */
 var WHALE_BTC=100;
 function loadWhale(){
-  return J('https://blockchain.info/unconfirmed-transactions?format=json&cors=true',20000).then(function(d){
+  return (window.FlowTracker?FlowTracker.bcSample(30):J('https://blockchain.info/unconfirmed-transactions?format=json&cors=true',20000)).then(function(d){
     var tx=(d.txs||[]).map(function(x){return {h:x.hash,t:x.time,btc:(x.out||[]).reduce(function(s,o){return s+(o.value||0)},0)/1e8}}).sort(function(a,b){return b.btc-a.btc});
     var price=g().med,big=tx.filter(function(x){return x.btc>=WHALE_BTC}),now=nowS();
     function line(x){return '<div style="font-size:13px"><a href="https://mempool.space/tx/'+esc(x.h)+'" target="_blank" rel="noopener noreferrer">'+x.btc.toFixed(1)+' BTC'+(isFinite(price)?' ≈ '+usd(x.btc*price,0):'')+'</a> <span class="mut">· '+ago(now-x.t)+' ago · unconfirmed</span></div>'}
@@ -286,5 +292,16 @@ function start(){
   var chk=setInterval(function(){if(FEEDLIST.every(function(f){return firstDone[f[0]]})){window.__ctxReady=true;clearInterval(chk)}},500);
   setTimeout(function(){window.__ctxReady=true},45000);
 }
-window.ContextPanel={start:start,onKalshi:onKalshi,_etToUnix:etToUnix,_events:EVENTS,_eventState:eventState,_regime:regime};
+function snapshot(W){
+  var n=nowS(),o={},ok=function(x,max){return x&&n-x.at<=max};
+  if(ok(SNAP.gap,120)&&SNAP.gap.W===W)o.gap={gap:SNAP.gap.gap,tl:Math.max(0,W+900-n)};
+  if(ok(SNAP.book,120)&&SNAP.book.W===W)o.book={imb:SNAP.book.imb};
+  if(ok(SNAP.funding,900))o.funding={rate:SNAP.funding.rate};
+  if(ok(SNAP.fng,172800))o.fng={v:SNAP.fng.v,cls:SNAP.fng.cls};
+  if(ok(SNAP.liq,900))o.liq={L:SNAP.liq.L,S:SNAP.liq.S};
+  if(window.FlowTracker){var s=FlowTracker.summary(900).tr.all;o.flow={buy:s[2],sell:s[3],cover:FlowTracker.coverage(['bin','okx'],900)}}
+  var es=eventState(n);if(es.sit)o.sit=es.sit.name;
+  return Object.keys(o).length?o:null;
+}
+window.ContextPanel={start:start,snapshot:snapshot,onKalshi:onKalshi,_etToUnix:etToUnix,_events:EVENTS,_eventState:eventState,_regime:regime};
 })();
