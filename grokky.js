@@ -42,35 +42,41 @@ function kalshiNow(W){
   return {mid:mid,strike:num(m.floor_strike),via:l._via,age:nowS()-(l.fetched_at||nowS())};
 }
 function items(rec,call,snap,kal){
-  var it=[],neutral=[];
-  (call&&call.signals||[]).forEach(function(s){var c=s.w*s.vote;if(!isFinite(c)||Math.abs(c)<0.003)return;it.push({src:'engine',pr:0,dir:c>0?'UP':'DOWN',m:Math.abs(c),txt:s.name+' — '+s.desc})});
+  var it=[],neutral=[],passed=[];
+  (call&&call.signals||[]).forEach(function(s){var c=s.w*s.vote;if(!isFinite(c))return;if(Math.abs(c)<0.003){passed.push('Engine signal “'+s.name+'”: '+s.desc+' — too close to neutral to count');return}it.push({src:'engine',pr:0,dir:c>0?'UP':'DOWN',m:Math.abs(c),txt:s.name+' — '+s.desc})});
   if(kal&&isFinite(kal.mid)){var d=kal.mid-.5;
     if(Math.abs(d)>=.02)it.push({src:'kalshi',pr:7,dir:d>0?'UP':'DOWN',m:Math.abs(d),txt:'Kalshi prices UP at '+Math.round(kal.mid*100)+'¢, so the crowd leans '+(d>0?'UP':'DOWN')});
-    else neutral.push('Kalshi prices the window at about even ('+Math.round(kal.mid*100)+'¢ UP), as expected near the open, so it does not pick a side.')}
+    else neutral.push('Kalshi prices this window at about even ('+Math.round(kal.mid*100)+'¢ UP), as expected near the open, so it doesn’t pick a side.')}
   else neutral.push('Kalshi price not loaded for this window.');
   if(snap){
-    var g=snap.gap;if(g&&isFinite(g.gap)&&Math.abs(g.gap)>=1)it.push({src:'ctx',pr:1,dir:g.gap>0?'UP':'DOWN',m:1,txt:'BRTI settlement average is '+usd(Math.abs(g.gap),0)+(g.gap>0?' above':' below')+' the strike with '+mmss(g.tl)+' left ('+(g.gap>0?'UP':'DOWN')+' if it ended now)'});
-    var b=snap.book;if(b&&isFinite(b.imb)&&Math.abs(b.imb)>=.15)it.push({src:'ctx',pr:2,dir:b.imb>0?'UP':'DOWN',m:Math.abs(b.imb),txt:'Kalshi order book: '+Math.round(Math.abs(b.imb)*100)+'% more resting size on the '+(b.imb>0?'UP':'DOWN')+' side'});
+    var g=snap.gap;if(g&&isFinite(g.gap)){if(Math.abs(g.gap)>=1)it.push({src:'ctx',pr:1,dir:g.gap>0?'UP':'DOWN',m:1,txt:'BRTI settlement average is '+usd(Math.abs(g.gap),0)+(g.gap>0?' above':' below')+' the strike with '+mmss(g.tl)+' left ('+(g.gap>0?'UP':'DOWN')+' if it ended now)'});else passed.push('Settlement gap: the BRTI average is within $1 of the strike, so it favours neither side')}else passed.push('Settlement gap: couldn’t read it (feed not loaded)');
+    var b=snap.book;if(b&&isFinite(b.imb)){if(Math.abs(b.imb)>=.15)it.push({src:'ctx',pr:2,dir:b.imb>0?'UP':'DOWN',m:Math.abs(b.imb),txt:'Kalshi order book: '+Math.round(Math.abs(b.imb)*100)+'% more resting size on the '+(b.imb>0?'UP':'DOWN')+' side'});else passed.push('Kalshi order book: only '+Math.round(Math.abs(b.imb)*100)+'% more size on '+(b.imb>0?'UP':'DOWN')+' (I need 15% or more)')}else passed.push('Kalshi order book: couldn’t read it (feed not loaded)');
     var f=snap.flow;if(f&&f.cover>=300&&f.buy+f.sell>=1e6){var r=f.buy/Math.max(f.sell,1);
       if(r>=1.5)it.push({src:'ctx',pr:3,dir:'UP',m:r,txt:'Large exchange trades (≥$25k, Binance+OKX, last 15 min): taker buys '+fu(f.buy)+' vs taker sells '+fu(f.sell)+' (follows the flow)'});
-      else if(r<=1/1.5)it.push({src:'ctx',pr:3,dir:'DOWN',m:1/r,txt:'Large exchange trades (≥$25k, Binance+OKX, last 15 min): taker sells '+fu(f.sell)+' vs taker buys '+fu(f.buy)+' (follows the flow)'})}
+      else if(r<=1/1.5)it.push({src:'ctx',pr:3,dir:'DOWN',m:1/r,txt:'Large exchange trades (≥$25k, Binance+OKX, last 15 min): taker sells '+fu(f.sell)+' vs taker buys '+fu(f.buy)+' (follows the flow)'});
+      else passed.push('Large exchange trades: buys '+fu(f.buy)+' vs sells '+fu(f.sell)+' — balanced (I need a 1.5× lean)')}
+    else passed.push('Large exchange trades: '+(f?'only '+Math.round((f.cover||0)/60)+' min watched or under $1M traded in 15 min — too little to read':'not watched yet'));
     var fr=snap.funding;if(fr&&isFinite(fr.rate)){
       if(fr.rate>=0.02)it.push({src:'ctx',pr:4,dir:'DOWN',m:fr.rate,txt:'OKX perp funding '+(fr.rate>=0?'+':'')+fr.rate.toFixed(4)+'% per 8 h: longs are paying, crowded long side (contrarian reading → DOWN)'});
-      else if(fr.rate<=-0.005)it.push({src:'ctx',pr:4,dir:'UP',m:Math.abs(fr.rate),txt:'OKX perp funding '+fr.rate.toFixed(4)+'% per 8 h: shorts are paying, crowded short side (contrarian reading → UP)'})}
+      else if(fr.rate<=-0.005)it.push({src:'ctx',pr:4,dir:'UP',m:Math.abs(fr.rate),txt:'OKX perp funding '+fr.rate.toFixed(4)+'% per 8 h: shorts are paying, crowded short side (contrarian reading → UP)'});
+      else passed.push('OKX funding '+(fr.rate>=0?'+':'')+fr.rate.toFixed(4)+'% per 8 h — inside my normal band, so no crowded side')}else passed.push('OKX funding: couldn’t read it (feed not loaded)');
     var l=snap.liq;if(l&&l.L+l.S>=5e5){
       if(l.L>=3*l.S)it.push({src:'ctx',pr:5,dir:'UP',m:l.L/Math.max(l.S,1),txt:'OKX liquidations last 60 min: longs '+fu(l.L)+' vs shorts '+fu(l.S)+' — forced selling already happened (contrarian reading → bounce UP)'});
-      else if(l.S>=3*l.L)it.push({src:'ctx',pr:5,dir:'DOWN',m:l.S/Math.max(l.L,1),txt:'OKX liquidations last 60 min: shorts '+fu(l.S)+' vs longs '+fu(l.L)+' — squeeze already happened (contrarian reading → pullback DOWN)'})}
+      else if(l.S>=3*l.L)it.push({src:'ctx',pr:5,dir:'DOWN',m:l.S/Math.max(l.L,1),txt:'OKX liquidations last 60 min: shorts '+fu(l.S)+' vs longs '+fu(l.L)+' — squeeze already happened (contrarian reading → pullback DOWN)'});
+      else passed.push('OKX liquidations last hour: longs '+fu(l.L)+' vs shorts '+fu(l.S)+' — not lopsided enough (I need 3×)')}
+    else passed.push('OKX liquidations last hour: '+(l?'only '+fu(l.L+l.S)+' — too small to read':'couldn’t read them (feed not loaded)'));
     var fg=snap.fng;if(fg&&isFinite(fg.v)){
       if(fg.v<=25)it.push({src:'ctx',pr:6,dir:'UP',m:(25-fg.v)/25,txt:'Fear & Greed '+fg.v+' ('+fg.cls+'): extreme fear (contrarian reading → UP; daily index, slow-moving)'});
-      else if(fg.v>=75)it.push({src:'ctx',pr:6,dir:'DOWN',m:(fg.v-75)/25,txt:'Fear & Greed '+fg.v+' ('+fg.cls+'): extreme greed (contrarian reading → DOWN; daily index, slow-moving)'})}
+      else if(fg.v>=75)it.push({src:'ctx',pr:6,dir:'DOWN',m:(fg.v-75)/25,txt:'Fear & Greed '+fg.v+' ('+fg.cls+'): extreme greed (contrarian reading → DOWN; daily index, slow-moving)'});
+      else passed.push('Fear & Greed '+fg.v+' ('+fg.cls+'): middle of the range, so no contrarian reading')}
     if(snap.sit)neutral.push('High-impact release window ('+snap.sit+'): prices can jump on the print, so this round is closer to a coin flip.');
   }else neutral.push('Market-context feeds were not ready, so only engine signals are cited.');
   var cr=window.ChartPanel&&ChartPanel.reading&&ChartPanel.reading();
   if(cr&&Math.abs(cr.z)>=1.5)it.push({src:'chart',pr:8,dir:cr.z>0?'DOWN':'UP',m:Math.abs(cr.z),txt:'Chart ('+(cr.src||'1-minute candles')+'): BTC moved '+(cr.move>=0?'+':'−')+usd(Math.abs(cr.move),0)+' in the last 10 minutes ('+(cr.z>=0?'+':'−')+Math.abs(cr.z).toFixed(1)+'× a typical 10-minute move), an overshoot that tends to give back (mean-reversion reading → '+(cr.z>0?'DOWN':'UP')+'; only a small backtested edge)'});
-  else if(cr)neutral.push('Chart: the last 10 minutes moved '+(cr.move>=0?'+':'−')+usd(Math.abs(cr.move),0)+' ('+Math.abs(cr.z).toFixed(1)+'× typical), not an overshoot, so it adds no side.');
+  else if(cr)passed.push('Chart: the last 10 minutes moved '+(cr.move>=0?'+':'−')+usd(Math.abs(cr.move),0)+' ('+Math.abs(cr.z).toFixed(1)+'× typical) — not an overshoot, so no side');
   it.forEach(function(x,i){x.i=i});
   if(rec.noedge)neutral.push('The engine reports NO EDGE: its signals nearly cancel (backtest: coin flip). Scored anyway, because one side always wins.');
-  return {it:it,neutral:neutral};
+  return {it:it,neutral:neutral,passed:passed};
 }
 function pick(it,side,ctxFirst){
   var mine=it.filter(function(x){return x.dir===side}),against=it.length-mine.length;
@@ -81,7 +87,7 @@ function buildWhy(rec){
   var call=st().calls&&st().calls[rec.W],snap=window.ContextPanel&&ContextPanel.snapshot?ContextPanel.snapshot(rec.W):null,kal=kalshiNow(rec.W);
   var e=items(rec,call,snap,kal),p1=pick(e.it,rec.g1,false),p2=pick(e.it,rec.g2,true);
   var ty=window.ChartPanel&&ChartPanel.typical15&&ChartPanel.typical15();
-  return {at:nowS(),g1:p1,g2:p2,neutral:e.neutral,forced2:p2.lines.length===0,haveCtx:!!snap,items:e.it.slice(0,18).map(function(x){return {src:x.src,dir:x.dir,m:+(+x.m).toFixed(4),txt:String(x.txt).slice(0,230)}}),typ:ty&&isFinite(ty.usd)?{usd:Math.round(ty.usd*100)/100,pct:ty.pct}:null};
+  return {at:nowS(),g1:p1,g2:p2,neutral:e.neutral,passed:e.passed.slice(0,14).map(function(x){return String(x).slice(0,230)}),forced2:p2.lines.length===0,haveCtx:!!snap,items:e.it.slice(0,18).map(function(x){return {src:x.src,dir:x.dir,m:+(+x.m).toFixed(4),txt:String(x.txt).slice(0,230)}}),typ:ty&&isFinite(ty.usd)?{usd:Math.round(ty.usd*100)/100,pct:ty.pct}:null};
 }
 function maybeFreeze(rec,now){
   if(rec.why||now>=rec.W+Q)return;
@@ -121,44 +127,95 @@ function windowMove(rec){
   var g=window.__pulseNow||{},kal=kalshiNow(rec.W),price=g.med,ref=kal&&isFinite(kal.strike)?kal.strike:g.winOpen,lab=kal&&isFinite(kal.strike)?'strike':'consensus open';
   if(!isFinite(price)||!isFinite(ref))return null;return {d:price-ref,lab:lab};
 }
+/* ---------- the two characters: simple inline SVG avatars ---------- */
+function avatar(n,k){
+  var c1=n===1?'#2f9fb5':'#ff6f61',c2=n===1?'#8cebd9':'#ffc980',id='gg'+n+(k||'');
+  return '<svg class="av av'+n+'" viewBox="0 0 64 64" role="img" aria-label="Grokky '+n+' avatar"><defs><linearGradient id="'+id+'" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="'+c2+'"/><stop offset="1" stop-color="'+c1+'"/></linearGradient></defs>'
+   +(n===1?'<line x1="32" y1="5" x2="32" y2="14" stroke="'+c1+'" stroke-width="3" stroke-linecap="round"/><circle cx="32" cy="5.5" r="4" fill="#ffb454"/>':'<path d="M17 16 L21 5 L29 14 Z M35 14 L43 5 L47 16 Z" fill="'+c1+'"/>')
+   +'<rect x="7" y="12" width="50" height="47" rx="23" fill="url(#'+id+')"/>'
+   +'<g class="eyes"><ellipse cx="23" cy="31" rx="6.2" ry="7" fill="#fff"/><ellipse cx="41" cy="31" rx="6.2" ry="7" fill="#fff"/><circle cx="24.6" cy="32" r="3.1" fill="#2a1d16"/><circle cx="42.6" cy="32" r="3.1" fill="#2a1d16"/></g>'
+   +(n===1?'<path d="M22 45 Q32 54 42 45" stroke="#2a1d16" stroke-width="3" fill="none" stroke-linecap="round"/>':'<path d="M22 47 Q33 49 43 41" stroke="#2a1d16" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M15 22 L28 26 M49 22 L36 26" stroke="#2a1d16" stroke-width="3" stroke-linecap="round"/>')
+   +'<circle cx="14" cy="43" r="4" fill="#ff9aa2" opacity=".55"/><circle cx="50" cy="43" r="4" fill="#ff9aa2" opacity=".55"/></svg>';
+}
+/* ---------- decision trail for a pick (why chosen + what else I considered) ---------- */
+function liUl(a){return a.length?'<ul>'+a.map(function(x){return '<li>'+esc(x)+'</li>'}).join('')+'</ul>':''}
+function pickTrail(n,rec,side){
+  var why=rec.why,o=opp(side);
+  if(!why)return {teaser:'',why:'<p>I’m still collecting readings (settlement gap, funding, liquidations…) before I write down my reasons. Give me a few seconds.</p>',more:'<p>I’ll list everything I looked at here once my reasons are frozen.</p>'};
+  var me=n===1?why.g1:why.g2,forced=n===2&&why.forced2,items=why.items,passed=why.passed||[];
+  var w='<h4>Why I picked '+arrow(side)+'</h4>';
+  w+=n===1?'<p>I follow the engine. Its blended score puts '+arrow(side)+' at <b>'+rec.conf+'%</b> against '+(100-rec.conf)+'% for the other side, and I never switch once I’ve locked in.</p>'
+          :'<p>My rule is to take the opposite side of Grokky 1, who’s on '+arrow(rec.g1)+'. The engine gives my side <b>'+(100-rec.conf)+'%</b>.</p>';
+  w+=forced?'<p>Honestly, nothing on the board points to '+arrow(side)+', so this is a forced opposite pick: I’m the designated contrarian.</p>'
+           :(me.lines.length?'<p>The readings I lean on:</p>'+liUl(me.lines):'<p>No single reading clears its threshold toward '+arrow(side)+', so I’m sticking with my rule.</p>');
+  w+='<p class="tiny">'+me.n+' reading'+(me.n===1?'':'s')+' point my way and '+me.against+' point the other way. These readings are context: earlier backtests found no reliable 15-minute edge in them.</p>';
+  var m='<h4>What else I considered</h4>';
+  if(items){var same=items.filter(function(x){return x.dir===side}),other=items.filter(function(x){return x.dir!==side}),total=items.length+passed.length;
+    m+='<p>I looked at <b>'+total+'</b> readings in total: <b>'+items.length+'</b> were strong enough to count ('+same.length+' toward '+arrow(side)+', '+other.length+' toward '+arrow(o)+') and <b>'+passed.length+'</b> were too weak or unavailable. I show my top '+me.lines.length+' above.</p>';
+    if(other.length)m+='<h4>Pointing the other way ('+arrow(o)+')</h4>'+liUl(other.slice(0,4).map(function(x){return x.txt}));
+  }else m+='<p>I didn’t save the full list of readings for this round (it was locked before I started keeping it), so I can only show my main reasons.</p>';
+  if(passed.length)m+='<h4>Looked at, but didn’t count</h4>'+liUl(passed.slice(0,10));
+  if(why.neutral&&why.neutral.length)m+='<h4>Had no side to give</h4>'+liUl(why.neutral);
+  var tz=forced?'Honestly, nothing on the board points to '+arrow(side)+' — I’m the designated contrarian, so this is a forced opposite pick.':(me.lines.length?'Mostly because: '+me.lines[0]:'No single reading clears its threshold, so I’m sticking with my rule.');
+  return {teaser:tz,why:w,more:m};
+}
 function cardHtml(n,rec,t){
   var side=rec?(n===1?rec.g1:rec.g2):null,w=n===1?t.w1:t.w2,l=n===1?t.w2:t.w1,tot=t.n,cur=n===1?t.cur1:t.cur2;
-  var name='Grokky '+n,role=n===1?'follows the v2 engine':'always the other side';
-  if(!rec)return '<div class="gkhead"><b>'+name+'</b><span class="pill">'+role+'</span></div><div class="mut" style="padding:12px 0">Waiting for the engine’s call for this window (needs ≥100 candles from ≥3 sources)…</div>'+foot(w,l,tot,cur);
-  var now=nowS(),left=rec.W+Q-now,mv=windowMove(rec),on=mv&&Math.abs(mv.d)>0?((mv.d>0)===(side==='UP')):null;
-  var why=rec.why,h='<div class="gkhead"><b>'+name+'</b><span class="pill">'+role+'</span>'+(rec.noedge?' <span class="pill warn" title="the engine’s signals cancel out">no edge round</span>':'')+'</div>';
-  h+='<div class="row" style="gap:16px;margin:6px 0"><div class="big '+cls(side)+'">'+arrow(side)+'</div>'
-    +'<div class="kv"><b>'+(n===1?rec.conf:100-rec.conf)+'%</b><small>'+(n===1?'engine’s own probability':'engine’s own probability for this (opposite) side')+'</small></div>'
-    +'<div class="kv"><b class="gkleft">§</b><small>until the window closes</small></div></div>';
-  h+='<div class="mut" style="font-size:12.5px">🔒 locked '+hhmmss(rec.lockedAt)+(rec.late?' <span class="warn">('+mmss(rec.lockedAt-rec.W)+' into the window: page opened mid-window; the engine only uses closed candles, so this is not hindsight)</span>':(rec.lockedAt-rec.W>20?' ('+mmss(rec.lockedAt-rec.W)+' into the window, as soon as the engine had its call)':' at window open'))+' · window '+hhmm(rec.W)+'–'+hhmm(rec.W+Q)+(mv?' · BTC '+(mv.d>=0?'+':'−')+usd(Math.abs(mv.d),2)+' vs '+mv.lab+(on===null?'':on?' <span class="up-t">✓ on track</span>':' <span class="dn-t">✗ off track</span>'):'')+'</div>';
-  if(why){var me=n===1?why.g1:why.g2,forced=n===2&&why.forced2;
-    h+='<div class="gkwhy"><div class="mut" style="font-size:11.5px;text-transform:uppercase;letter-spacing:.06em">Why '+(n===1?'(engine signals + context)':'(contrarian case from board data)')+' · as of '+hhmmss(why.at)+'</div><ul>'
-      +(forced?'<li class="mut">Nothing on the board currently points to '+side+'. This is a forced opposite pick: Grokky 2 always hedges Grokky 1.</li>':(me.lines.length?me.lines.map(function(x){return '<li>'+esc(x)+'</li>'}).join(''):'<li class="mut">No individual signal clears its threshold toward '+side+'.</li>'))
-      +'</ul>'+(me.against?'<div class="mut" style="font-size:12px">'+me.against+(me.against>1?' other readings point':' other reading points')+' the other way.</div>':'')+'</div>';
-  }else h+='<div class="mut" style="margin:8px 0;font-size:13px">Collecting context (BRTI gap, funding, liquidations…) before writing the rationale…</div>';
-  return h+foot(w,l,tot,cur);
+  var head='<div class="gkhead">'+avatar(n,'c')+'<div class="gkname"><b>Grokky '+n+'</b><small>'+(n===1?'I follow the v2 engine':'I always take the other side')+'</small></div>'+(rec&&rec.noedge?' <span class="pill warn" title="the engine’s signals cancel out">no-edge round</span>':'')+'</div>';
+  if(!rec)return head+'<div class="bubble">Hi, I’m Grokky '+n+'! I’m waiting for the engine’s call for this window — it needs about 100 candles from at least 3 sources. I’ll share my pick the moment it’s ready.</div>'+foot(n,w,l,tot,cur);
+  var now=nowS(),mv=windowMove(rec),on=mv&&Math.abs(mv.d)>0?((mv.d>0)===(side==='UP')):null,mine=n===1?rec.conf:100-rec.conf,pk='<span class="pickbig '+cls(side)+'">'+arrow(side)+'</span>';
+  var say=n===1?'I’m going '+pk+' this round. The engine I follow puts that side at <b>'+mine+'%</b> — honestly only a little better than a coin flip.'
+               :'I’m taking '+pk+' — the opposite of Grokky 1, like always. The engine gives my side just <b>'+mine+'%</b>, so I’m the underdog by design.';
+  if(rec.noedge)say+=' The engine says there’s no real edge this time, so this one’s close to a toss-up.';
+  var h=head+'<div class="bubble">'+say+'</div>';
+  h+='<div class="gkmeta">🔒 I locked this in '+(rec.late?'<span class="warn">'+mmss(rec.lockedAt-rec.W)+' into the window</span> (this page opened mid-window; I only use closed candles, so it’s not hindsight)':(rec.lockedAt-rec.W>20?mmss(rec.lockedAt-rec.W)+' into the window, as soon as the engine had its call':'at window open'))+' at '+hhmmss(rec.lockedAt)+' · window '+hhmm(rec.W)+'–'+hhmm(rec.W+Q)+' · ⏳ <b class="gkleft">§</b> left'
+    +(mv?' · BTC '+(mv.d>=0?'+':'−')+usd(Math.abs(mv.d),2)+' vs '+mv.lab+(on===null?'':on?' <span class="up-t">✓ I’m on track</span>':' <span class="dn-t">✗ I’m off track</span>'):'')+'</div>';
+  var tr=pickTrail(n,rec,side);
+  if(tr.teaser)h+='<div class="teaser">'+esc(tr.teaser)+'</div>';
+  h+=UI.xp('why'+n,'Why? How I chose '+arrow(side),tr.why)+UI.xp('more'+n,'What else I considered',tr.more);
+  return h+foot(n,w,l,tot,cur);
 }
-function foot(w,l,tot,cur){return '<div class="gkfoot"><span>Record <b>'+w+' W / '+l+' L</b></span><span>'+(tot?(w/tot*100).toFixed(1)+'% win rate':'no rounds scored yet')+'</span><span>streak <b class="'+(cur>0?'up-t':cur<0?'dn-t':'')+'">'+streakTxt(cur)+'</b></span></div>'}
+function foot(n,w,l,tot,cur){return '<div class="gkfoot"><span>My record <b>'+UI.cu('gkw'+n,w)+' W</b> / <b>'+UI.cu('gkl'+n,l)+' L</b></span><span>'+(tot?'<b>'+UI.cu('gkr'+n,w/tot*100,{d:1,suf:'%'})+'</b> win rate':'no rounds scored yet')+'</span><span>streak <b class="'+(cur>0?'up-t':cur<0?'dn-t':'')+'">'+streakTxt(cur)+'</b></span></div><div class="tiny mut" style="font-size:12px;margin-top:6px">I only make paper picks: I never place bets or send anything to Kalshi.</div>'}
 function resultCell(r,now){return r.winner?'<span class="'+(r.kres==='yes'?'up-t':'dn-t')+'">'+(r.kres==='yes'?'▲ UP':'▼ DOWN')+'</span>':(r.W+Q>now?'<span class="mut">in progress</span>':'<span class="mut">awaiting Kalshi settlement</span>')}
+/* ---------- decision trail for a scored round ---------- */
+function roundTrail(r){
+  var out=r.kres==='yes'?'UP':'DOWN',why=r.why,h='<h4>What happened</h4><p>Kalshi settled <b class="'+cls(out)+'">'+arrow(out)+'</b>'+(isFinite(r.kexp)&&isFinite(r.kstrike)?' ('+usd(r.kexp,2)+' vs a strike of '+usd(r.kstrike,2)+', '+(r.kexp-r.kstrike>=0?'+':'−')+usd(Math.abs(r.kexp-r.kstrike),2)+')':'')+', so <b>Grokky '+r.winner+'</b> was right.'+(r.noedge?' The engine had called this one “no edge”.':'')+'</p>';
+  if(!why)return h+'<p>I never froze my reasons for this round (the page wasn’t open long enough), so there’s no trail to show.</p>';
+  [1,2].forEach(function(n){var me=n===1?why.g1:why.g2,side=n===1?r.g1:r.g2,forced=n===2&&why.forced2;
+    h+='<h4>Grokky '+n+': why I picked '+arrow(side)+(r.winner===n?' ✓':' ✗')+'</h4>'+(forced?'<p>Nothing on the board pointed that way: a forced opposite pick.</p>':(me.lines.length?liUl(me.lines):'<p>No single reading cleared its threshold.</p>'))});
+  if(why.items){var rt=why.items.filter(function(x){return x.dir===out});
+    h+='<h4>What else we considered</h4><p>Between us we looked at <b>'+(why.items.length+(why.passed||[]).length)+'</b> readings: '+why.items.length+' strong enough to count ('+why.items.filter(function(x){return x.dir==='UP'}).length+' UP, '+why.items.filter(function(x){return x.dir==='DOWN'}).length+' DOWN) and '+(why.passed||[]).length+' too weak or unavailable. '+rt.length+' of the strong ones pointed '+arrow(out)+', the way it went.</p>'+(rt.length?liUl(rt.slice(0,3).map(function(x){return x.txt})):'')
+      +((why.passed||[]).length?'<p class="tiny">Passed over: '+esc((why.passed||[]).slice(0,4).join(' · '))+((why.passed||[]).length>4?' · +'+((why.passed||[]).length-4)+' more':'')+'</p>':'');
+  }else h+='<p class="tiny">The full list of readings wasn’t saved for this round.</p>';
+  return h;
+}
+var SEENROWS=null;
 function renderScore(t,now){
   var el=$('gkScore');if(!el)return;
-  var rows=t.rows.slice().reverse().slice(0,40);
-  var ne=t.ne.n?('No-edge rounds scored: <b>'+t.ne.n+'</b> (Grokky 1 won '+t.ne.w1+', Grokky 2 won '+t.ne.w2+'). They still count, because one of them always wins.'):'No “no edge” rounds scored yet (they still count when they happen: one side always wins).';
-  var h='<div class="row" style="gap:22px;margin-bottom:8px">'
-    +[1,2].map(function(n){var w=n===1?t.w1:t.w2,cur=n===1?t.cur1:t.cur2,best=n===1?t.best1:t.best2;return '<div class="kv"><small>Grokky '+n+'</small><b>'+w+' / '+t.n+' correct</b><small>'+(t.n?(w/t.n*100).toFixed(1)+'% · ':'')+'streak '+streakTxt(cur)+' · best run '+best+'</small></div>'}).join('')
-    +'<div class="kv"><small>Rounds scored</small><b>'+t.n+'</b><small>'+(t.pend?t.pend+' awaiting Kalshi settlement':'none waiting')+'</small></div></div>'
-    +'<div class="mut" style="font-size:12.5px;margin-bottom:8px">'+ne+'</div>'
-    +'<div class="gkgrid"><div class="logwrap tw" style="max-height:230px"><table><thead><tr><th class="l">Window</th><th>Grokky 1</th><th>Grokky 2</th><th>Kalshi result</th><th>Winner</th><th class="l">Notes</th></tr></thead><tbody>'
-    +(rows.map(function(r){return '<tr'+(r.winner?' data-w="'+r.W+'" class="clk" title="Click for this round’s post-mortem"':'')+'><td class="l">'+hhmm(r.W)+'–'+hhmm(r.W+Q)+'</td><td class="'+cls(r.g1)+'">'+r.g1+'</td><td class="'+cls(r.g2)+'">'+r.g2+'</td><td>'+resultCell(r,now)+'</td><td>'+(r.winner?'<b>Grokky '+r.winner+'</b>':'—')+'</td><td class="l mut"'+(r.winner&&isFinite(r.kexp)&&isFinite(r.kstrike)?' title="Kalshi settled at '+usd(r.kexp,2)+' vs strike '+usd(r.kstrike,2)+'"':'')+'>'+[r.noedge?'no edge':'',r.late?'late lock':''].filter(Boolean).join(' · ')+'</td></tr>'}).join('')||'<tr><td class="l mut" colspan="6">No rounds yet — the first pick locks at the next window open and scores once Kalshi settles it.</td></tr>')
-    +'</tbody></table></div><div class="chartbox" style="height:190px"><canvas id="gkChart"></canvas></div></div>';
+  var rows=t.rows.slice().reverse().slice(0,40),first=SEENROWS===null;
+  var ne=t.ne.n?('Rounds the engine called “no edge”: <b>'+t.ne.n+'</b> so far (Grokky 1 won '+t.ne.w1+', Grokky 2 won '+t.ne.w2+'). They still count, because one of us is always right.'):'No “no edge” rounds yet — they’ll still count when they happen, because one of us is always right.';
+  var cols=[1,2].map(function(n){var w=n===1?t.w1:t.w2,cur=n===1?t.cur1:t.cur2,best=n===1?t.best1:t.best2,p=t.n?w/t.n*100:0;
+    return '<div class="scorecol"><div class="row" style="gap:10px;flex-wrap:nowrap">'+avatar(n,'s')+'<div><div class="mut" style="font-size:12.5px">Grokky '+n+'</div><div style="font-size:20px;font-weight:750">'+UI.cu('sc'+n,w)+' <span class="mut" style="font-size:14px;font-weight:500">of '+t.n+' correct</span></div></div></div>'
+      +UI.bar('bar'+n,Math.round(p*10)/10)+'<div class="mut" style="font-size:12.5px;margin-top:4px">'+(t.n?p.toFixed(1)+'% right · ':'')+'streak '+streakTxt(cur)+' · best run '+best+'</div></div>'}).join('');
+  var h='<div class="row" style="gap:22px;margin-bottom:10px;align-items:flex-start">'+cols
+    +'<div class="scorecol" style="flex:0 1 150px"><div class="mut" style="font-size:12.5px">Rounds scored</div><div style="font-size:24px;font-weight:750">'+UI.cu('rounds',t.n)+'</div><div class="mut" style="font-size:12.5px">'+(t.pend?t.pend+' waiting for Kalshi to settle':'none waiting')+'</div></div></div>'
+    +'<div class="say">'+avatar(1,'q')+'<span>“Every round one of us is right, so please don’t read our record as skill. The engine I follow only has a small tested edge — about 50–52%.”</span></div>'
+    +'<div class="say">'+avatar(2,'q')+'<span>“I’m always on the other side, so my wins are Grokky 1’s losses. If I’m ahead, it just means the engine has been unlucky lately — I’m not smarter.”</span></div>'
+    +'<div class="mut" style="font-size:12.5px;margin:6px 0 8px">'+ne+'</div>'
+    +'<div class="gkgrid"><div><div class="logwrap tw" style="max-height:300px"><table><thead><tr><th class="l">Window</th><th>Grokky 1</th><th>Grokky 2</th><th>Kalshi result</th><th>Winner</th><th class="l">Notes</th></tr></thead><tbody>'
+    +(rows.map(function(r){var open=r.winner,isNew=!first&&!SEENROWS[r.W];
+      return '<tr'+(open?' data-w="'+r.W+'" class="clk'+(isNew?' rowin':'')+'" title="Click to open the decision trail for this round"':(isNew?' class="rowin"':''))+'><td class="l">'+hhmm(r.W)+'–'+hhmm(r.W+Q)+'</td><td class="'+cls(r.g1)+'">'+r.g1+'</td><td class="'+cls(r.g2)+'">'+r.g2+'</td><td>'+resultCell(r,now)+'</td><td>'+(r.winner?'<b>Grokky '+r.winner+'</b>':'—')+'</td><td class="l mut"'+(r.winner&&isFinite(r.kexp)&&isFinite(r.kstrike)?' title="Kalshi settled at '+usd(r.kexp,2)+' vs strike '+usd(r.kstrike,2)+'"':'')+'>'+[r.noedge?'no edge':'',r.late?'late lock':''].filter(Boolean).join(' · ')+(r.winner?' <span class="chip">Why? <span class="chev" style="display:inline-block">▸</span></span>':'')+'</td></tr>'
+        +(open?'<tr class="dtl"><td colspan="6"><div class="xp" data-xid="row'+r.W+'"><div class="xpin"><div class="xpbody">'+roundTrail(r)+'</div></div></div></td></tr>':'')}).join('')||'<tr><td class="l mut" colspan="6">No rounds yet — my first pick locks at the next window open and gets scored once Kalshi settles it.</td></tr>')
+    +'</tbody></table></div>'+(t.rows.length>rows.length?'<div class="mut tiny" style="font-size:12px;margin-top:4px">Showing the latest '+rows.length+' of '+t.rows.length+' rounds (the CSV has all of them).</div>':'')+'</div><div class="chartbox" style="height:210px"><canvas id="gkChart"></canvas></div></div>';
   var sig=t.rows.length+':'+t.n+':'+t.pend+':'+rows.map(function(r){return (r.winner||0)+(r.late?'l':'')}).join('');
-  if(sig!==lastSig||!$('gkChart')){lastSig=sig;el.innerHTML=h;chart=null;drawChart(t)}
+  if(sig!==lastSig||!$('gkChart')){lastSig=sig;el.innerHTML=h;chart=null;drawChart(t);UI.restore(el);UI.countAll(el);UI.settleBars(el)}
+  var seen={};t.rows.forEach(function(r){seen[r.W]=1});SEENROWS=seen;
 }
 function drawChart(t){
   if(typeof Chart==='undefined'||!$('gkChart'))return;
   var lab=[],a=[],b=[],x=0,y=0;t.scored.forEach(function(r){if(r.winner===1)x++;else y++;lab.push(hhmm(r.W));a.push(x);b.push(y)});
   chart=new Chart($('gkChart'),{type:'line',data:{labels:lab,datasets:[{label:'Grokky 1 correct (cumulative)',data:a,borderColor:'#5aa9ff',pointRadius:0,borderWidth:2,stepped:true},{label:'Grokky 2 correct (cumulative)',data:b,borderColor:'#ffb454',borderDash:[5,3],pointRadius:0,borderWidth:2,stepped:true}]},
-    options:{responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{labels:{color:'#8b97b3',boxWidth:10,font:{size:11}}}},scales:{x:{ticks:{color:'#8b97b3',maxTicksLimit:6},grid:{color:'#1b2438'}},y:{beginAtZero:true,ticks:{color:'#8b97b3',precision:0},grid:{color:'#1b2438'}}}}});
+    options:{responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{labels:{color:'#c9b8a8',boxWidth:10,font:{size:11}}}},scales:{x:{ticks:{color:'#c9b8a8',maxTicksLimit:6},grid:{color:'#3d3027'}},y:{beginAtZero:true,ticks:{color:'#c9b8a8',precision:0},grid:{color:'#3d3027'}}}}});
 }
 
 /* ---------- why a pick lost: first-person, only from data stored for that round ---------- */
@@ -168,8 +225,8 @@ function postMortem(rec,demo){
   if(!rec||!rec.winner)return '';
   var n=rec.winner===1?2:1,side=n===1?rec.g1:rec.g2,out=rec.kres==='yes'?'UP':'DOWN',why=rec.why,me=why&&(n===1?why.g1:why.g2),mine=rec.conf!=null?(n===1?rec.conf:100-rec.conf):null;
   var move=(isFinite(rec.kexp)&&isFinite(rec.kstrike))?rec.kexp-rec.kstrike:NaN,typ=why&&why.typ&&isFinite(why.typ.usd)&&why.typ.usd>0?why.typ.usd:NaN,ratio=isFinite(move)&&isFinite(typ)?Math.abs(move)/typ:NaN;
-  var h='<div class="pmhead"><b>Grokky '+n+'</b> lost the '+hhmm(rec.W)+'–'+hhmm(rec.W+Q)+' round'+(demo?' <span class="pill warn">EXAMPLE — seeded for illustration, not a real round</span>':'')+'</div>';
-  h+='<p>I picked <b class="'+cls(side)+'">'+arrow(side)+'</b>'+(mine!=null?' (the engine’s own probability for that side was '+mine+'%)':'')+' and locked it at '+hhmmss(rec.lockedAt)+'. Kalshi settled <b class="'+cls(out)+'">'+arrow(out)+'</b>, so Grokky '+rec.winner+' got this one.'+(rec.noedge?' The engine had flagged this as a <i>no edge</i> round, so I was close to a coin flip going in.':'')+'</p>';
+  var h='<div class="pmhead">'+avatar(n,'p')+' <span><b>Grokky '+n+' here.</b> Oof — I lost the '+hhmm(rec.W)+'–'+hhmm(rec.W+Q)+' round, so let me tell you honestly what happened.</span>'+(demo?' <span class="pill warn">EXAMPLE — seeded for illustration, not a real round</span>':'')+'</div>';
+  h+='<p>I picked <b class="'+cls(side)+'">'+arrow(side)+'</b>'+(mine!=null?' (the engine’s own probability for that side was '+mine+'%)':'')+' and locked it at '+hhmmss(rec.lockedAt)+'. Kalshi settled <b class="'+cls(out)+'">'+arrow(out)+'</b>, so Grokky '+rec.winner+' called it.'+(rec.noedge?' The engine had flagged this as a <i>no edge</i> round, so I was close to a coin flip going in.':'')+'</p>';
   // what moved price
   if(isFinite(move)){
     var thin=isFinite(ratio)&&ratio<0.25,big=isFinite(ratio)&&ratio>=1;
@@ -205,7 +262,8 @@ function update(force){
   if(!H)return;var now=nowS(),s=st(),G=s.groks||{},W0=Math.floor(now/Q)*Q,rec=G[W0]||null;
   if(rec)maybeFreeze(rec,now);
   var t=tally(now);
-  [1,2].forEach(function(n){var el=$('gk'+n);if(!el)return;var h=cardHtml(n,rec,t);if(el._h!==h){el.innerHTML=h;el._h=h}
+  [1,2].forEach(function(n){var el=$('gk'+n);if(!el)return;var h=cardHtml(n,rec,t);if(el._h!==h){el.innerHTML=h;el._h=h;UI.restore(el);UI.countAll(el);UI.settleBars(el)}
+    if(rec&&el._W!==rec.W){var first=el._W===undefined;el._W=rec.W;el.classList.add('reveal');setTimeout(function(){el.classList.remove('reveal')},1700)}
     var l=el.querySelector('.gkleft');if(l)l.textContent=mmss(W0+Q-now)});
   renderScore(t,now);ensurePx(now);renderPM();
 }
@@ -214,7 +272,7 @@ function csv(){
   Object.keys(G).map(Number).sort(function(a,b){return a-b}).forEach(function(w){var r=G[w];rows.push([new Date(w*1000).toLocaleString(),w,r.g1,r.g2,r.conf,r.noedge?'yes':'no',r.late?'yes':'no',r.kres||'',r.winner?'Grokky '+r.winner:'',isFinite(r.kexp)?r.kexp:'',isFinite(r.kstrike)?r.kstrike:'',r.lockedAt].map(function(x){return '"'+String(x).replace(/"/g,'""')+'"'}).join(','))});
   var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([rows.join('\n')],{type:'text/csv'}));a.download='grokky-rounds.csv';document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove()},500);
 }
-function init(host){H=host;if($('gkCsv'))$('gkCsv').onclick=csv;var sc=$('gkScore');if(sc)sc.addEventListener('click',function(e){var tr=e.target.closest&&e.target.closest('tr[data-w]');if(!tr)return;PMDEMO=null;PMSEL=+tr.getAttribute('data-w');if($('pmCard')&&$('pmCard').scrollIntoView)$('pmCard').scrollIntoView({block:'nearest',behavior:'smooth'});renderPM()});update()}
+function init(host){H=host;if($('gkCsv'))$('gkCsv').onclick=csv;var sc=$('gkScore');if(sc)sc.addEventListener('click',function(e){var tr=e.target.closest&&e.target.closest('tr[data-w]');if(!tr)return;PMDEMO=null;PMSEL=+tr.getAttribute('data-w');var d=tr.nextElementSibling,x=d&&d.querySelector('.xp[data-xid]');if(x){var open=!x.classList.contains('open');x.classList.toggle('open',open);var id=x.getAttribute('data-xid');if(open)UI._open[id]=1;else delete UI._open[id];var ch=tr.querySelector('.chip .chev');if(ch)ch.style.transform=open?'rotate(90deg)':''}renderPM()});update()}
 function showDemo(on){PMDEMO=on?demoRec():null;renderPM()}
 function demoRec(){var W=Math.floor(Date.now()/1000/Q)*Q-3*Q;return {W:W,g1:'UP',g2:'DOWN',conf:58,noedge:false,lockedAt:W+7,late:false,winner:1,kres:'yes',kexp:70412.55,kstrike:70371.2,px:{o:70368,c:70415,hi:70440,lo:70352,tHi:W+780,tLo:W+120,above:11,below:3,n:15,src:'Coinbase 1m (example)'},
   why:{at:W+8,g1:{lines:['1-hour overshoot — price fell 0.8% in an hour (−1.3σ), oversold','RSI(14) 28 — oversold'],idx:[0,1],n:2,against:2},g2:{lines:['BRTI settlement average is $34 below the strike with 14:50 left (DOWN if it ended now)','OKX perp funding +0.0300% per 8 h: longs are paying, crowded long side (contrarian reading → DOWN)'],idx:[2,3],n:2,against:2},forced2:false,haveCtx:true,neutral:[],typ:{usd:96,pct:0.0013},

@@ -21,3 +21,8 @@ Storage `pulseboard.flows.v1`: latest 1000 items + per-minute totals for ~3 h, s
 
 ## Reset (migration)
 `index.html` runs a one-time inline script before anything else: if `pulseboard.cleared.2026-11-12` is not set it removes `pulseboard.v1` (call history, play-money bets and balance, legacy v1 line) and `pulseboard.obook.v1` (old paper order-book log), then sets the flag. New keys: `pulseboard.v2`, `pulseboard.obook.v2`, `pulseboard.flows.v1`. Backfill is off, so history starts empty and only holds calls locked while a tab was open.
+
+## Friendly redesign (grokky-charts branch)
+- Only the two Grokkys speak, always in first person; the old third-person note block is gone. Each has a simple inline-SVG avatar (`avatar()` in `grokky.js`).
+- Every result has an expandable decision trail (`ui.js` → `UI.xp`): picks ("Why? How I chose…" + "What else I considered"), tracker highlights ("Why this one?" + "What else I considered" with looked-at / passed-over / duplicates-rejected / kept counts since the page opened, in memory only), and scored rounds (click a scoreboard row). Trails use only fields that were really stored (`why.items`, `why.passed`, `why.neutral`, `why.g1/g2`, `kexp`, `kstrike`) and say so when something wasn't saved.
+- Motion (fade/slide-in, count-ups, pick reveal, live pulse, expand/collapse, bar transitions, new-row slide-in) is CSS + `ui.js` and is disabled under `prefers-reduced-motion`. No storage keys changed.

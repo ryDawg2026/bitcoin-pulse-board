@@ -28,6 +28,12 @@ function price(){var g=window.__pulseNow;return g&&isFinite(g.med)&&g.med>1000?g
 
 /* ---------- state ---------- */
 var S=load(),ids={},dirty=false;
+/* decision-trail counters: what this visit looked at, passed over (< $25k), or rejected as a duplicate. In memory only (not stored). */
+var CNT={since:Date.now()/1000,tx:{seen:0,below:0,dup:0},tr:{seen:0,below:0,dup:0},lq:{seen:0,below:0,dup:0}},seenIds={},seenN=0;
+function consider(k,id,u){
+  if(seenIds[id]||ids[id]){CNT[k].dup++;return false}
+  if(++seenN>60000){seenIds={};seenN=0}seenIds[id]=1;CNT[k].seen++;
+  if(!(u>=MIN_USD)){CNT[k].below++;return false}return true}
 function fresh(){return {v:1,recs:[],bk:{},cov:{tx:{from:0,last:0},bin:{from:0,last:0},okx:{from:0,last:0},lq:{from:0,last:0}},binLast:0}}
 function load(){try{var s=JSON.parse(localStorage.getItem(KEY)||'null');if(s&&s.v===1&&Array.isArray(s.recs)&&s.bk&&s.cov){var f=fresh();Object.keys(f.cov).forEach(function(k){if(!s.cov[k])s.cov[k]=f.cov[k]});return s}}catch(e){}return fresh()}
 function save(){if(!dirty)return;try{prune();localStorage.setItem(KEY,JSON.stringify(S));dirty=false}catch(e){/* storage full/unavailable: keep running in memory */}}
@@ -36,7 +42,8 @@ S.recs.forEach(function(r){ids[r.i]=1});
 
 /* ---------- ingest ---------- */
 function addRec(r){ // r: {i,t,k,s,b,u,side?,mx?,n?,link?}
-  if(!r||ids[r.i]||!isFinite(r.u)||r.u<MIN_USD||!isFinite(r.t))return false;
+  if(!r)return false;if(ids[r.i]){if(CNT[r.k])CNT[r.k].dup++;return false}
+  if(!isFinite(r.u)||r.u<MIN_USD||!isFinite(r.t))return false;
   var now=nowS();if(r.t>now)r.t=now;
   ids[r.i]=1;S.recs.push(r);
   while(S.recs.length>CAP){var o=S.recs.shift();delete ids[o.i]}
@@ -74,7 +81,7 @@ function pollTx(){
     var txs=d.txs||[];if(!txs.length)throw new Error('empty sample');
     cover('tx',60);var added=0;
     txs.forEach(function(x){var outs=(x.out||[]).map(function(o){return (o.value||0)/1e8}),btc=outs.reduce(function(s,v){return s+v},0),u=btc*p;
-      if(u>=MIN_USD&&x.hash&&addRec({i:'tx:'+x.hash,t:x.time,k:'tx',s:'blockchain.info',b:btc,u:u,mx:Math.max.apply(null,outs),n:outs.length,h:x.hash}))added++});
+      if(x.hash&&consider('tx','tx:'+x.hash,u)&&addRec({i:'tx:'+x.hash,t:x.time,k:'tx',s:'blockchain.info',b:btc,u:u,mx:Math.max.apply(null,outs),n:outs.length,h:x.hash}))added++});
     return added});
 }
 function pollBin(){
@@ -85,7 +92,7 @@ function pollBin(){
       if(!Array.isArray(d))throw new Error('bad response');
       var full=d.length>=1000;
       d.forEach(function(x){var q=num(x.q),px=num(x.p),usd=q*px;S.binLast=Math.max(S.binLast,x.a);
-        if(usd>=MIN_USD)addRec({i:'bn:'+x.a,t:x.T/1000,k:'tr',s:'Binance',b:q,u:usd,side:x.m?'sell':'buy',px:px}) }); // m=true: buyer was the maker, so the TAKER sold
+        if(consider('tr','bn:'+x.a,usd))addRec({i:'bn:'+x.a,t:x.T/1000,k:'tr',s:'Binance',b:q,u:usd,side:x.m?'sell':'buy',px:px}) }); // m=true: buyer was the maker, so the TAKER sold
       dirty=true;
       if(full&&++pages<3)return page();
       // a full last page means we did not catch up: do not claim continuous coverage
@@ -98,7 +105,7 @@ function pollOkx(){
   return J('https://www.okx.com/api/v5/market/trades?instId=BTC-USDT&limit=500',15000).then(function(d){
     var a=d.data;if(!Array.isArray(a))throw new Error('bad response');
     cover('okx',100);
-    a.forEach(function(x){var q=num(x.sz),px=num(x.px),usd=q*px;if(usd>=MIN_USD&&(x.side==='buy'||x.side==='sell'))addRec({i:'ok:'+x.tradeId,t:(+x.ts)/1000,k:'tr',s:'OKX',b:q,u:usd,side:x.side,px:px})});
+    a.forEach(function(x){var q=num(x.sz),px=num(x.px),usd=q*px;if((x.side==='buy'||x.side==='sell')&&consider('tr','ok:'+x.tradeId,usd))addRec({i:'ok:'+x.tradeId,t:(+x.ts)/1000,k:'tr',s:'OKX',b:q,u:usd,side:x.side,px:px})});
   });
 }
 var RUN={tx:pollTx,bin:pollBin,okx:pollOkx};
@@ -111,7 +118,7 @@ function tickFeeds(){ // keeps polling in background tabs too (browsers throttle
   ['tx','bin','okx'].forEach(function(id){if(Date.now()>=FEED[id].next)runFeed(id)})}
 /* liquidations come from the Market-context OKX box, which already fetches them: rows = {t,long,usd,px,btc} */
 function addLiq(rows){
-  try{cover('lq',400);rows.forEach(function(x){addRec({i:'lq:'+Math.round(x.t)+':'+x.btc.toFixed(4)+':'+(x.long?'l':'s'),t:x.t,k:'lq',s:'OKX',b:x.btc,u:x.usd,side:x.long?'long':'short',px:x.px})});FEED.lq.ok=true;FEED.lq.err='';FEED.lq.at=nowS();save();render()}catch(e){FEED.lq.ok=false;FEED.lq.err=why(e)}}
+  try{cover('lq',400);rows.forEach(function(x){var lid='lq:'+Math.round(x.t)+':'+x.btc.toFixed(4)+':'+(x.long?'l':'s');if(consider('lq',lid,x.usd))addRec({i:lid,t:x.t,k:'lq',s:'OKX',b:x.btc,u:x.usd,side:x.long?'long':'short',px:x.px})});FEED.lq.ok=true;FEED.lq.err='';FEED.lq.at=nowS();save();render()}catch(e){FEED.lq.ok=false;FEED.lq.err=why(e)}}
 function liqFail(e){FEED.lq.ok=false;FEED.lq.err=why(e);render()}
 
 /* ---------- rendering ---------- */
@@ -129,25 +136,41 @@ function covNote(feeds){
   if(c15<880)p.push('15 min: only '+ago(c15)+' watched');if(c60<3580)p.push('1 h: only '+ago(c60)+' watched');
   return p.length?'<div class="warn" style="font-size:12px;margin-top:4px">Partial window — '+p.join(' · ')+'. Totals only count what this page saw while open.</div>':'';
 }
-function recLine(r){
+function recLine(r,isNew){
   var kind=r.k==='tx'?'On-chain transfer <span class="mut">(unconfirmed)</span>':r.k==='tr'?'Trade · taker <b class="'+(r.side==='buy'?'up-t':'dn-t')+'">'+(r.side==='buy'?'BUY':'SELL')+'</b>':'Liquidation · <b>'+r.side+'</b> position';
   var link=r.k==='tx'&&r.h?'<a href="https://mempool.space/tx/'+esc(r.h)+'" target="_blank" rel="noopener noreferrer">'+esc(r.h.slice(0,8))+'…</a>':'';
   var extra=r.k==='tx'?'largest output '+r.mx.toFixed(2)+' BTC · '+r.n+' output'+(r.n>1?'s':''):(r.px?'@ $'+Math.round(r.px).toLocaleString('en-US'):'');
   var t=tier(r.u);
-  return '<tr><td class="l">'+hhmmss(r.t)+'</td><td class="l">'+kind+'</td><td>'+r.b.toFixed(r.b<1?4:2)+' BTC</td><td><b>'+fu(r.u)+'</b></td><td><span class="pill '+(t===3?'warn':t===2?'lv':'')+'">T'+t+'</span></td><td class="l mut">'+esc(r.s)+(extra?' · '+esc(extra):'')+(link?' · '+link:'')+'</td></tr>';
+  return '<tr'+(isNew?' class="rowin"':'')+'><td class="l">'+hhmmss(r.t)+'</td><td class="l">'+kind+'</td><td>'+r.b.toFixed(r.b<1?4:2)+' BTC</td><td><b>'+fu(r.u)+'</b></td><td><span class="pill '+(t===3?'warn':t===2?'lv':'')+'">T'+t+'</span></td><td class="l mut">'+esc(r.s)+(extra?' · '+esc(extra):'')+(link?' · '+link:'')+'</td></tr>';
 }
+var KLAB={tx:'on-chain transfer',tr:'exchange trade',lq:'liquidation'};
+function why1(r,rank,pool,total){
+  var side=r.k==='tx'?'It’s an on-chain <b>transfer</b>: the amount includes change, and nothing says buy or sell, so I show no direction.':r.k==='tr'?'The exchange reports the taker side as <b>'+(r.side==='buy'?'BUY':'SELL')+'</b> (a single fill, not a trader’s whole position).':'The exchange reports it as a forced close of a <b>'+r.side+'</b> position.';
+  return '<h4>Why I surfaced this</h4><p>It’s <b>#'+rank+'</b> of the <b>'+pool+'</b> item'+(pool===1?'':'s')+' ≥ $25k I kept in the last hour, ranked only by dollar size ('+fu(r.u)+', tier T'+tier(r.u)+').</p><h4>What I passed over</h4><p>The other '+(pool-1)+' kept item'+(pool===2?'':'s')+' were smaller'+(pool>3?' (I only highlight the top 3)':'')+'. '+side+' This is context, not a prediction: earlier backtests found large flows didn’t beat Kalshi’s price.</p>'}
+function highlights(){
+  var cut=nowS()-3600,pool=S.recs.filter(function(r){return r.t>=cut}).sort(function(a,b){return b.u-a.u}),top=pool.slice(0,3),m=Math.round((nowS()-CNT.since)/60);
+  var h='<div class="mini" style="margin-bottom:12px"><h3>✨ Biggest moves I’m highlighting <span class="mut" style="font-weight:400">(last hour)</span></h3>';
+  if(!top.length)h+='<div class="mut">Nothing ≥ $25k in the last hour yet. I’ll surface the biggest ones as they show up.</div>';
+  top.forEach(function(r,i){h+='<div style="margin:6px 0"><b>'+fu(r.u)+'</b> '+KLAB[r.k]+(r.k==='tr'?' · taker <b class="'+(r.side==='buy'?'up-t':'dn-t')+'">'+(r.side==='buy'?'BUY':'SELL')+'</b>':r.k==='lq'?' · '+r.side+' position':'')+' <span class="mut">· '+hhmmss(r.t)+' · '+esc(r.s)+'</span>'+UI.xp('hi'+i,'Why this one?',why1(r,i+1,pool.length))+'</div>'});
+  var t=CNT,shown=Math.min(40,S.recs.length);
+  var tb='<table class="ftab"><thead><tr><th class="l">Feed</th><th>looked at</th><th>under $25k, passed over</th><th>duplicates rejected</th><th>kept (≥ $25k)</th></tr></thead><tbody>'+['tx','tr','lq'].map(function(k){return '<tr><td class="l">'+KINDS[k]+'</td><td>'+t[k].seen+'</td><td>'+t[k].below+'</td><td>'+t[k].dup+'</td><td>'+(t[k].seen-t[k].below)+'</td></tr>'}).join('')+'</tbody></table>';
+  h+=UI.xp('passed','What else I considered (counts since this page opened '+(m<1?'a moment':m+' min')+' ago)','<p>Here’s everything I weighed, not just what I’m showing:</p>'+tb+'<p class="tiny">“Looked at” counts each new item once. Items under $25k are dropped on purpose; duplicates come from overlapping feed requests. Right now I’m listing the newest '+shown+' of the '+S.recs.length+' items I’ve kept (the list keeps at most '+CAP+').</p>');
+  return h+'</div>';
+}
+var ROWSEEN=null;
 function render(){
   var el=$('flowSum');if(!el)return;
   var p=price(),st=[];
   function pill(id,lab){var f=FEED[id];return '<span class="pill '+(f.ok===true?'ok':f.ok===false?'bad':'')+'" title="'+esc(f.err)+'">'+lab+': '+(f.ok===true?'live':f.ok===false?'unavailable — '+esc(f.err):'starting…')+'</span>'}
   var cv=function(f){var c=S.cov[f];return c.from?hhmm(c.from):'—'};
   $('flowStatus').innerHTML=pill('tx','Mempool (blockchain.info)')+' '+pill('bin','Binance')+' '+pill('okx','OKX trades')+' '+pill('lq','OKX liquidations')+'<div class="mut" style="font-size:12px;margin-top:4px">Watching since (continuous): mempool '+cv('tx')+' · Binance '+cv('bin')+' · OKX '+cv('okx')+' · '+(isFinite(p)?'BTC→USD at $'+Math.round(p).toLocaleString('en-US'):'waiting for a BTC price')+'</div>';
-  el.innerHTML='<div class="ctxgrid">'
+  el.innerHTML=highlights()+'<div class="ctxgrid">'
     +'<div class="mini"><h3>'+KINDS.tx+'</h3>'+sumTable('tx')+covNote(['tx'])+'<div class="mut ctxnote">Large <b>transfers</b>, not sales: the amount is the sum of all outputs including change, and nothing here says buy or sell. Sampled from the public mempool feed: each request returns only the latest 100 transactions (about 30 s worth when I checked), polled every ~25 s, so very busy moments can be undercounted.</div></div>'
     +'<div class="mini"><h3>'+KINDS.tr+'</h3>'+sumTable('tr','tr')+covNote(['bin','okx'])+'<div class="mut ctxnote">Single <b>trades</b> ≥ $25k (Binance aggregated fills, OKX fills). Taker side is reported by the exchange. USDT ≈ USD. One trade is one fill, not one trader’s full position. OKX returns only its latest 500 trades per request, so bursts can be undercounted.</div></div>'
     +'<div class="mini"><h3>'+KINDS.lq+'</h3>'+sumTable('lq','lq')+covNote(['lq'])+'<div class="mut ctxnote">Forced closes ≥ $25k. OKX’s REST feed only shows its latest handful, so this is a floor.</div></div></div>';
   var kind=($('flowKind')||{}).value||'all',list=S.recs.slice().filter(function(r){return kind==='all'||r.k===kind}).sort(function(a,b){return b.t-a.t}).slice(0,40);
-  $('flowList').innerHTML='<table><thead><tr><th class="l">Seen</th><th class="l">What</th><th>Size</th><th>USD (when seen)</th><th>Tier</th><th class="l">Source</th></tr></thead><tbody>'+(list.map(recLine).join('')||'<tr><td class="l mut" colspan="6">Nothing ≥ $25k recorded yet.</td></tr>')+'</tbody></table>';
+  $('flowList').innerHTML='<table><thead><tr><th class="l">Seen</th><th class="l">What</th><th>Size</th><th>USD (when seen)</th><th>Tier</th><th class="l">Source</th></tr></thead><tbody>'+(list.map(function(r){return recLine(r,ROWSEEN&&!ROWSEEN[r.i])}).join('')||'<tr><td class="l mut" colspan="6">Nothing ≥ $25k recorded yet.</td></tr>')+'</tbody></table>';
+  var ns={};list.forEach(function(r){ns[r.i]=1});ROWSEEN=ns;if(window.UI)UI.restore($('flowSum'));
   $('flowMeta').textContent=S.recs.length+' of the latest '+CAP+' items stored in this browser · per-minute totals kept ~3 h';
 }
 function csv(){
@@ -167,6 +190,6 @@ function start(){
   var w=setInterval(function(){if(isFinite(price())){clearInterval(w);FEED.tx.next=FEED.bin.next=FEED.okx.next=0;tickFeeds()}},1000);
   window.__flowsReady=true;
 }
-window.FlowTracker={start:start,addLiq:addLiq,liqFail:liqFail,bcSample:bcSample,summary:summary,coverage:coverageFor,records:function(){return S.recs},buckets:function(){return S.bk},render:render,
+window.FlowTracker={_cnt:CNT,start:start,addLiq:addLiq,liqFail:liqFail,bcSample:bcSample,summary:summary,coverage:coverageFor,records:function(){return S.recs},buckets:function(){return S.bk},render:render,
   _add:addRec,_tier:tier,_clear:clear,_state:function(){return S},_status:function(){return FEED},_cover:cover};
 })();

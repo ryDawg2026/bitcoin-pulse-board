@@ -6,7 +6,7 @@
 <meta name="robots" content="noindex,nofollow">
 <title>Bitcoin Pulse Board</title>
 <style>
-:root{--bg:#0b0f17;--card:#121826;--card2:#171f31;--line:#232d44;--tx:#e6ebf5;--mut:#8b97b3;--up:#2fd18b;--dn:#ff5d73;--acc:#f7931a;--blue:#5aa9ff}
+:root{--bg:#1c1612;--card:#2a211b;--card2:#342921;--line:#4d3d31;--tx:#fdf3e8;--mut:#c9b8a8;--up:#2fd18b;--dn:#ff5d73;--acc:#ffa63d;--blue:#7cc4e8;--r:20px;--shadow:0 6px 22px rgba(0,0,0,.28)}
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
 .wrap{max-width:1100px;margin:0 auto;padding:14px}
@@ -24,7 +24,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
 button.up{background:rgba(47,209,139,.15);border-color:var(--up);color:var(--up);font-weight:700}
 button.dn{background:rgba(255,93,115,.15);border-color:var(--dn);color:var(--dn);font-weight:700}
 button.small{padding:4px 9px;font-size:13px}
-input[type=number]{font:inherit;color:var(--tx);background:#0d1320;border:1px solid var(--line);border-radius:10px;padding:8px 10px;width:130px}
+input[type=number]{font:inherit;color:var(--tx);background:#211a15;border:1px solid var(--line);border-radius:10px;padding:8px 10px;width:130px}
 .pill{display:inline-block;padding:2px 10px;border-radius:99px;font-size:12px;border:1px solid var(--line);color:var(--mut)}
 .pill.ok{color:var(--up);border-color:rgba(47,209,139,.5)}.pill.bad{color:var(--dn);border-color:rgba(255,93,115,.5)}
 .pill.bf{color:#c9a3ff;border-color:rgba(201,163,255,.5)}.pill.lv{color:var(--blue);border-color:rgba(90,169,255,.5)}
@@ -34,7 +34,7 @@ input[type=number]{font:inherit;color:var(--tx);background:#0d1320;border:1px so
 .kv{display:flex;flex-direction:column}.kv b{font-size:18px}.kv small{color:var(--mut);font-size:12px}
 .sig{display:grid;grid-template-columns:150px 1fr 70px 60px;gap:8px;align-items:center;padding:5px 0;border-bottom:1px dashed var(--line);font-size:13px}
 .sig:last-child{border:0}
-.bar{position:relative;height:10px;background:#0d1320;border-radius:6px;overflow:hidden}
+.bar{position:relative;height:10px;background:#211a15;border-radius:6px;overflow:hidden}
 .bar i{position:absolute;top:0;bottom:0}
 .bar:after{content:"";position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--mut)}
 .sig .nm small{display:block;color:var(--mut)}
@@ -46,20 +46,20 @@ th:first-child,td:first-child{text-align:left}th{color:var(--mut);font-weight:60
 td.l,th.l{text-align:left}
 .chartbox{position:relative;height:300px}
 .logwrap{max-height:420px;overflow:auto}
-.banner{background:#3a2a10;border:1px solid #7a5a1c;color:#ffd48a;padding:8px 12px;border-radius:10px;margin-bottom:12px;font-size:13px;display:none}
+.banner{background:#4a3515;border:1px solid #9a7428;color:#ffd48a;padding:8px 12px;border-radius:10px;margin-bottom:12px;font-size:13px;display:none}
 details summary{cursor:pointer;color:var(--blue)}
-.howto p,.howto li{color:#c5cde0;font-size:14px}
-.disc{border-color:#5a4a1c;background:#1c1810;color:#e8d9a8;font-size:13px}
+.howto p,.howto li{color:#efe2d4;font-size:14px}
+.disc{border-color:#8a6d2a;background:#2e2517;color:#f3e3b8;font-size:13px}
 footer{color:var(--mut);font-size:12px;text-align:center;padding:10px 0 30px}
 .lockbadge{font-size:12px;color:var(--mut)}
-.tfb.on{background:var(--blue);color:#08101c;border-color:var(--blue);font-weight:700}
-.clk{cursor:pointer}.clk:hover td{background:#16213a}.pmhead{font-size:15px;margin-bottom:6px}#pmBody p{margin:7px 0;font-size:14px;line-height:1.5}#pmBody ul{margin:4px 0 6px 18px;padding:0;font-size:13.5px;color:#c5cde0}
+.tfb.on{background:var(--blue);color:#1c1612;border-color:var(--blue);font-weight:700}
+.clk{cursor:pointer}.clk:hover td{background:#3b2e25}.pmhead{font-size:15px;margin-bottom:8px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}.pmhead .av{width:46px;height:46px}#pmBody p{margin:7px 0;font-size:14px;line-height:1.5}#pmBody ul{margin:4px 0 6px 18px;padding:0;font-size:13.5px;color:#efe2d4}
 .askbox{display:flex;flex-direction:column;gap:8px}
 #askLog{height:300px;overflow:auto;background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:10px}
-.askmsg{margin:0 0 10px;max-width:92%}.askmsg.user{margin-left:auto;background:#1a2b4a;border:1px solid #2a4170;border-radius:12px 12px 2px 12px;padding:7px 11px;font-size:14px}
-.askmsg.bot .asktag{font-size:11px;color:var(--mut);margin-bottom:2px;letter-spacing:.02em}.askmsg.bot .askbody{background:#121a2c;border:1px solid var(--line);border-radius:12px 12px 12px 2px;padding:8px 12px;font-size:14px;line-height:1.5}
+.askmsg{margin:0 0 10px;max-width:92%}.askmsg.user{margin-left:auto;background:#5b3f2c;border:1px solid #8c6244;border-radius:12px 12px 2px 12px;padding:7px 11px;font-size:14px}
+.askmsg.bot .asktag{font-size:11px;color:var(--mut);margin-bottom:2px;letter-spacing:.02em}.askmsg.bot .askbody{background:#33271f;border:1px solid var(--line);border-radius:12px 12px 12px 2px;padding:8px 12px;font-size:14px;line-height:1.5}
 .askbody p{margin:4px 0}.askbody ul{margin:4px 0 4px 18px;padding:0}.askpm p{margin:6px 0}
-#askForm{display:flex;gap:8px}#askInput{flex:1;min-width:0;font:inherit;color:var(--tx);background:#0d1320;border:1px solid var(--line);border-radius:10px;padding:9px 11px}
+#askForm{display:flex;gap:8px}#askInput{flex:1;min-width:0;font:inherit;color:var(--tx);background:#211a15;border:1px solid var(--line);border-radius:10px;padding:9px 11px}
 #askChips{display:flex;flex-wrap:wrap;gap:6px}
 @media(max-width:560px){#askLog{height:260px}.askmsg{max-width:100%}}
 .pcwrap{position:relative;height:360px}.pcwrap canvas{width:100%;height:100%;display:block;touch-action:pan-y}
@@ -72,16 +72,81 @@ footer{color:var(--mut);font-size:12px;text-align:center;padding:10px 0 30px}
 .mini .cs{white-space:nowrap;flex-shrink:0}.mini h3{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--mut);margin:0 0 8px;display:flex;justify-content:space-between;align-items:center;gap:8px;font-weight:600}
 .mini a{color:var(--blue)}.ctxnote{font-size:11.5px;margin-top:8px;line-height:1.35}
 .newsrow{padding:5px 0;border-bottom:1px dashed var(--line);font-size:13.5px}.newsrow:last-child{border:0}
-.evrow{padding:4px 0;font-size:13.5px}.warn{color:#ffb454}.sit{background:#3a1218;border:1px solid var(--dn);color:#ffb3bf;padding:6px 10px;border-radius:8px;margin-bottom:6px;font-size:13px}
-.ctxalert{display:none;padding:8px 12px;border-radius:10px;margin-bottom:12px;font-size:13px}.ctxalert.red{background:#3a1218;border:1px solid var(--dn);color:#ffb3bf}.ctxalert.amber{background:#3a2a10;border:1px solid #7a5a1c;color:#ffd48a}
+.evrow{padding:4px 0;font-size:13.5px}.warn{color:#ffb454}.sit{background:#4a1f1f;border:1px solid var(--dn);color:#ffb3bf;padding:6px 10px;border-radius:8px;margin-bottom:6px;font-size:13px}
+.ctxalert{display:none;padding:8px 12px;border-radius:10px;margin-bottom:12px;font-size:13px}.ctxalert.red{background:#4a1f1f;border:1px solid var(--dn);color:#ffb3bf}.ctxalert.amber{background:#4a3515;border:1px solid #9a7428;color:#ffd48a}
 .noedge{color:var(--mut)!important}.pill.warn{color:#ffb454;border-color:rgba(255,180,84,.5)}.pill.bad.warn{color:#ffb454}
 details>summary{cursor:pointer}
 .gk{margin-bottom:0}.gkhead{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:17px}.gkhead b{font-size:18px}
 .gkwhy ul{margin:4px 0 4px;padding-left:18px;font-size:13.5px}.gkwhy li{margin:3px 0}
 .gkfoot{display:flex;flex-wrap:wrap;gap:6px 18px;margin-top:10px;padding-top:8px;border-top:1px dashed var(--line);font-size:13px;color:var(--mut)}.gkfoot b{color:var(--tx)}
-.gknote{font-size:12.5px;margin:8px 2px 12px}.gkgrid{display:grid;grid-template-columns:1.7fr 1fr;gap:12px}@media(max-width:860px){.gkgrid{grid-template-columns:1fr}}
+.gknote{font-size:12.5px;margin:8px 2px 12px}.gkgrid{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);gap:12px}.gkgrid>*{min-width:0}@media(max-width:860px){.gkgrid{grid-template-columns:minmax(0,1fr)}}
 .ftab{font-size:12.5px;white-space:nowrap}.ftab th,.ftab td{padding:5px 5px}.ftab td.l{white-space:normal}.ftab tr.tot td{border-top:1px solid var(--line);font-weight:600}
-select{font:inherit;color:var(--tx);background:#0d1320;border:1px solid var(--line);border-radius:10px;padding:6px 8px}
+select{font:inherit;color:var(--tx);background:#211a15;border:1px solid var(--line);border-radius:10px;padding:6px 8px}
+
+/* ===== friendlier look: warm dark palette, soft rounded cards, motion that respects prefers-reduced-motion ===== */
+html,body{font:15.5px/1.55 ui-rounded,"SF Pro Rounded","Nunito","Segoe UI",system-ui,-apple-system,Roboto,sans-serif}
+body{background:radial-gradient(1200px 500px at 10% -10%,#3a2819 0,transparent 60%),radial-gradient(900px 420px at 100% 0,#2b1f2e 0,transparent 55%),var(--bg)}
+h1{font-size:25px;letter-spacing:-.01em}.sub{font-size:14px}
+.card{border-radius:var(--r);box-shadow:var(--shadow);border:1px solid rgba(255,214,170,.09);padding:18px;background:linear-gradient(180deg,rgba(255,255,255,.025),transparent 40%),var(--card);transition:transform .25s ease,box-shadow .25s ease}
+.card:hover{transform:translateY(-1px);box-shadow:0 10px 28px rgba(0,0,0,.34)}
+.card h2{font-size:16.5px;letter-spacing:0;text-transform:none;color:var(--tx);font-weight:700;margin:0 0 12px}
+.card h2 .mut{font-weight:500;font-size:12.5px}
+.mini,.sgbox{border-radius:16px;border-color:rgba(255,214,170,.1)}.mini h3,.sgbox h3{text-transform:none;letter-spacing:0;font-size:13.5px;color:var(--tx);font-weight:650}
+button{border-radius:999px;padding:8px 16px;transition:transform .15s ease,background .2s,border-color .2s,box-shadow .2s}
+button:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,.25)}button:active:not(:disabled){transform:scale(.97)}
+button.small{padding:5px 12px}
+.pill{border-radius:999px;padding:3px 12px}
+.pill.ok::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:currentColor;margin-right:6px;vertical-align:1px;animation:pulse 1.9s ease-in-out infinite}
+input[type=number],select,#askInput{border-radius:999px}
+table{font-size:13.5px}th{font-weight:650}
+a{color:#9bd4f0}
+.banner{border-radius:14px}
+.logwrap{border-radius:12px}
+/* decision-trail expanders */
+.xpw{margin-top:8px}
+.xpb{display:inline-flex;align-items:center;gap:6px;background:rgba(255,214,170,.08);border:1px solid rgba(255,214,170,.18);color:var(--tx);font-size:13px;padding:5px 13px}
+.xpb .chev{display:inline-block;transition:transform .3s ease}.xpb[aria-expanded=true] .chev{transform:rotate(90deg)}
+.xp{display:grid;grid-template-rows:0fr;transition:grid-template-rows .35s ease,opacity .3s ease;opacity:0}
+.xp.open{grid-template-rows:1fr;opacity:1}.xp.noanim{transition:none}
+.xpin{overflow:hidden;min-height:0}
+.xpbody{margin-top:8px;padding:10px 14px;background:rgba(0,0,0,.18);border-radius:14px;font-size:13.5px;line-height:1.55}
+.xpbody ul{margin:4px 0 6px;padding-left:18px}.xpbody li{margin:3px 0}.xpbody h4{margin:8px 0 3px;font-size:13px;color:var(--acc);font-weight:700}.xpbody h4:first-child{margin-top:0}
+.xpbody{overflow-x:auto}.xpbody .tiny{font-size:12px;color:var(--mut)}
+/* Grokky characters */
+.gk{position:relative;overflow:hidden}
+.gk::after{content:"";position:absolute;right:-60px;top:-60px;width:180px;height:180px;border-radius:50%;opacity:.12;pointer-events:none}
+#gk1::after{background:#58c7c0}#gk2::after{background:#ff8a65}
+.gkhead{gap:12px}.av{width:58px;height:58px;flex:0 0 58px;filter:drop-shadow(0 4px 8px rgba(0,0,0,.35))}
+.av .eyes{transform-origin:32px 29px;animation:blink 5.5s infinite}.av2 .eyes{animation-delay:1.7s}
+.gkname b{font-size:19px;display:block;line-height:1.1}.gkname small{color:var(--mut);font-size:12.5px}
+.bubble{position:relative;margin:10px 0 6px;padding:11px 15px;border-radius:18px 18px 18px 6px;font-size:15px;line-height:1.5}
+#gk1 .bubble{background:rgba(88,199,192,.14);border:1px solid rgba(88,199,192,.3)}#gk2 .bubble{background:rgba(255,138,101,.14);border:1px solid rgba(255,138,101,.3)}
+.pickbig{display:inline-block;font-weight:800;font-size:26px;letter-spacing:.01em;vertical-align:-3px}
+.gkmeta{font-size:12.5px;color:var(--mut);margin-top:4px}
+.teaser{font-size:13.5px;margin:6px 0 0;color:#efe2d4}
+.sbar{height:12px;background:rgba(0,0,0,.28);border-radius:99px;overflow:hidden;margin-top:6px}.sbar i{display:block;height:100%;border-radius:99px;width:0;transition:width .9s cubic-bezier(.2,.8,.2,1)}
+.sbar.s1 i{background:linear-gradient(90deg,#3aa6b9,#6fe0cf)}.sbar.s2 i{background:linear-gradient(90deg,#ff7a6b,#ffb36b)}
+.scorecol{min-width:150px;flex:1}
+.say{display:flex;gap:9px;align-items:flex-start;margin:6px 0;font-size:13.5px}.say .av{width:32px;height:32px;flex-basis:32px}.say span{background:rgba(255,214,170,.07);padding:7px 12px;border-radius:14px}
+tr.dtl td{padding:0;border:0;text-align:left;white-space:normal}tr.dtl .xpbody{margin:0 0 8px;font-size:13px}
+tr.clk td:last-child{position:relative}
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--mut);cursor:pointer}
+/* motion */
+@keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes slidein{from{opacity:0;transform:translateX(-16px);background:rgba(255,166,61,.25)}to{opacity:1;transform:none;background:transparent}}
+@keyframes pop{0%{transform:scale(.3) rotate(-14deg);opacity:0}60%{transform:scale(1.18) rotate(4deg);opacity:1}100%{transform:none}}
+@keyframes bounce{0%,100%{transform:translateY(0)}35%{transform:translateY(-9px)}65%{transform:translateY(2px)}}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.7)}}
+@keyframes blink{0%,94%,100%{transform:scaleY(1)}97%{transform:scaleY(.1)}}
+@keyframes fadein{from{opacity:0}to{opacity:1}}
+@keyframes bubblein{from{opacity:0;transform:translateY(8px) scale(.97)}to{opacity:1;transform:none}}
+.card{animation:rise .6s cubic-bezier(.2,.8,.2,1) backwards;animation-delay:calc(var(--i,0)*60ms)}
+.rowin{animation:slidein .9s ease both}
+.reveal .pickbig{animation:pop .75s cubic-bezier(.2,1.2,.3,1) both}.reveal .av{animation:bounce .9s ease}.reveal .bubble{animation:bubblein .6s ease both}
+.askmsg{animation:bubblein .35s ease both}
+.cu{font-variant-numeric:tabular-nums}
+@media(max-width:560px){h1{font-size:21px}.card{padding:14px;border-radius:18px}.av{width:48px;height:48px;flex-basis:48px}.pickbig{font-size:23px}}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 </style>
 </head>
 <body>
@@ -89,10 +154,10 @@ select{font:inherit;color:var(--tx);background:#0d1320;border:1px solid var(--li
 <header>
   <div>
     <h1>₿ Bitcoin <span>Pulse</span> Board</h1>
-    <div class="sub">Prices from all reachable free public sources · up/down call every 15 min · play money only</div>
+    <div class="sub">Hi there! 👋 I keep an eye on Bitcoin so you can think things over: a fresh up-or-down guess every 15 minutes, built from free public prices. Everything here is play money.</div>
   </div>
   <div class="row">
-    <span class="pill" id="nextPill">next call in <b id="countdown">--:--</b></span>
+    <span class="pill ok" id="nextPill">next call in <b id="countdown">--:--</b></span>
     <button id="refreshBtn" aria-label="Refresh now">⟳ Refresh now</button>
   </div>
 </header>
@@ -104,17 +169,16 @@ select{font:inherit;color:var(--tx);background:#0d1320;border:1px solid var(--li
   <section class="card gk" id="gk1" aria-label="Grokky 1"></section>
   <section class="card gk" id="gk2" aria-label="Grokky 2"></section>
 </div>
-<div class="mut gknote"><b>Paper picks only — no bets, no orders, nothing is sent to Kalshi.</b> Each 15-minute window, Grokky 1 takes the v2 engine’s side and Grokky 2 always takes the opposite side, locked when the window opens (or, if this page is opened mid-window, as soon as the engine has its call; the engine only uses closed candles, so that is not hindsight). At the open Kalshi’s price is ~50¢ by design, so it cannot choose a side; it is only cited. Reasons use only data that actually loaded. Rounds are scored against Kalshi’s real settlement. The tally lives in this browser and only advances while a tab is open.</div>
 <section class="card" id="chartCard">
-  <h2>BTC price <span class="mut" style="text-transform:none;letter-spacing:0">(live candles · green = up, red = down · read-only, no orders)</span></h2>
+  <h2>📈 Bitcoin right now <span class="mut">· green candles are up moves, red are down moves · just for looking, no orders</span></h2>
   <div class="row" style="gap:8px;margin-bottom:8px" id="pcTabs"><button class="small tfb on" data-tf="1m">1m</button><button class="small tfb" data-tf="5m">5m</button><button class="small tfb" data-tf="15m">15m</button><span class="mut" style="font-size:12px;margin-left:6px" id="pcReadout"></span></div>
   <div class="pcwrap"><canvas id="pcChart" aria-label="BTC candlestick chart"></canvas></div>
-  <div class="mut" style="font-size:12px;margin-top:6px" id="pcNote">Loading candles…</div>
+  <div class="mut" style="font-size:12px;margin-top:6px" id="pcNote">Fetching the candles for you…</div>
 </section>
 
 <section class="card" id="sigCard">
-  <h2>Signals over time <span class="mut" style="text-transform:none;letter-spacing:0">(last 3 h · only real samples, nothing back-filled · context only)</span></h2>
-  <div class="mut" style="font-size:12.5px;margin-bottom:10px">These are the same readings the Grokkys may cite. Earlier backtests found none of them predicted 15-minute moves beyond Kalshi’s own price, so treat them as context, not a forecast.</div>
+  <h2>📊 What’s been happening lately <span class="mut">· the last 3 hours, real samples only, nothing filled in</span></h2>
+  <div class="mut" style="font-size:12.5px;margin-bottom:10px">These are the same readings Grokky 1 and I (Grokky 2) look at when we pick. Earlier tests found none of them predicted the next 15 minutes better than Kalshi’s own price, so enjoy them as context, not a crystal ball.</div>
   <div class="sggrid">
     <div class="sgbox"><h3>Large-trade flow by tier</h3><canvas id="sgFlow"></canvas><div class="n" id="sgFlowN"></div></div>
     <div class="sgbox"><h3>Liquidations (OKX)</h3><canvas id="sgLiq"></canvas><div class="n" id="sgLiqN"></div></div>
@@ -126,18 +190,18 @@ select{font:inherit;color:var(--tx);background:#0d1320;border:1px solid var(--li
 </section>
 
 <section class="card" id="gkCard">
-  <h2>Grokky 1 vs Grokky 2 — scoreboard <span class="mut" style="text-transform:none;letter-spacing:0">(scored against Kalshi’s real settlement · started fresh on 2026-11-12)</span></h2>
+  <h2>🏆 Our scoreboard <span class="mut">· checked against Kalshi’s real result · fresh start on 2026-11-12</span></h2>
   <div id="gkScore" class="mut">Loading…</div>
-  <div class="row" style="margin-top:8px"><button class="small" id="gkCsv">⬇ Export rounds CSV</button><span class="mut" style="font-size:12px">One of them is right every round, so this is a head-to-head, not proof of skill. The engine’s backtested edge is small (~50–52%).</span></div>
+  <div class="row" style="margin-top:8px"><button class="small" id="gkCsv">⬇ Export rounds CSV</button><span class="mut" style="font-size:12px">Click a finished round to see why each of us picked what we did. One of us is right every round, so this is a friendly head-to-head, not proof of skill.</span></div>
 </section>
 
 <section class="card" id="pmCard">
-  <h2>Why a pick lost <span class="mut" style="text-transform:none;letter-spacing:0">(first person · only from data stored for that round · click a scoreboard row for another round)</span></h2>
+  <h2>💭 When one of us gets it wrong <span class="mut">· told honestly, using only what was saved for that round</span></h2>
   <div id="pmBody" class="mut">Loading…</div>
 </section>
 
 <section class="card" id="askCard">
-  <h2>Ask AI about Bitcoin <span class="mut" style="text-transform:none;letter-spacing:0">(info only · not financial advice · cannot place bets, orders or trades)</span></h2>
+  <h2>💬 Ask me about Bitcoin <span class="mut">· friendly info only, not financial advice · I can’t place bets, orders or trades</span></h2>
   <div class="row" style="margin-bottom:8px"><span id="askMode"></span><button class="small" id="askClear" style="margin-left:auto">Clear chat</button></div>
   <div class="askbox">
     <div id="askLog" aria-live="polite"></div>
@@ -149,7 +213,7 @@ select{font:inherit;color:var(--tx);background:#0d1320;border:1px solid var(--li
 
 <div class="grid g2">
   <section class="card" id="callCard">
-    <h2>Current call <span class="lockbadge" id="lockInfo"></span></h2>
+    <h2>🎯 The engine’s call for this window <span class="lockbadge" id="lockInfo"></span></h2>
     <div class="row" style="gap:20px">
       <div class="big" id="callDir">…</div>
       <div class="kv"><b id="callConf">—</b><small>chance the called side is right (model estimate)</small></div>
@@ -164,7 +228,7 @@ select{font:inherit;color:var(--tx);background:#0d1320;border:1px solid var(--li
   </section>
 
   <section class="card" id="betCard">
-    <h2>Play-money bet <span class="mut" style="text-transform:none;letter-spacing:0">(even payout, not real)</span></h2>
+    <h2>🪙 Try a play-money bet <span class="mut">· even payout, not real money</span></h2>
     <div class="row" style="gap:20px">
       <div class="kv"><small>balance</small><b id="bal">$1,000</b></div>
       <div class="kv"><small>bets W / L</small><b id="betWL">0 / 0</b></div>
@@ -184,13 +248,13 @@ select{font:inherit;color:var(--tx);background:#0d1320;border:1px solid var(--li
 </div>
 
 <section class="card" id="kalshiCard">
-  <h2>Kalshi “BTC up in next 15 mins?” market <span class="mut" style="text-transform:none;letter-spacing:0">(read-only public data · odds are the crowd’s, not ours · nothing here places an order)</span></h2>
+  <h2>🎲 What Kalshi’s crowd thinks <span class="mut">· the “BTC up in next 15 mins?” market · odds are the crowd’s, not ours · look only, nothing is ordered</span></h2>
   <div id="kalshiBody" class="mut">Loading Kalshi…</div>
   <div class="chartbox" style="height:210px;margin-top:10px"><canvas id="kalshiChart"></canvas></div>
 </section>
 
 <section class="card" id="ctxCard">
-  <h2>Market context <span class="mut" style="text-transform:none;letter-spacing:0">(read-only information to think a call over · none of this feeds the engine · no orders)</span></h2>
+  <h2>🌍 The bigger picture <span class="mut">· background to think a call over · none of this feeds the engine · no orders</span></h2>
   <div class="mut" style="font-size:12.5px;margin-bottom:10px">Earlier backtests found news, whale transfers, funding and order-book imbalance did <b>not</b> predict 15-minute moves beyond Kalshi’s own price. Treat these as background. Any box that cannot load says “unavailable” — nothing is guessed.</div>
   <div class="ctxgrid">
     <div class="mini" id="ctx-settle"><h3>Settlement gap (BRTI) <span class="cs pill">loading</span></h3><div class="cb mut">Loading…</div></div>
@@ -205,8 +269,8 @@ select{font:inherit;color:var(--tx);background:#0d1320;border:1px solid var(--li
 </section>
 
 <section class="card" id="flowCard">
-  <h2>Large transfers &amp; trades tracker <span class="mut" style="text-transform:none;letter-spacing:0">(≥ $25,000 · read-only context · none of this feeds the engine)</span></h2>
-  <div class="mut" style="font-size:12.5px;margin-bottom:8px"><b>Read this first.</b> On-chain items are large <b>transfers</b> seen in the Bitcoin mempool: the amount includes change sent back to the sender, and nothing tells us whether it is a buy, a sale or a wallet shuffle, so no direction is shown. Exchange items are real <b>trades</b> with the exchange-reported taker side. Everything is counted only while this page is open, so each total shows how long it was actually watched. Earlier backtests found large flows did not predict 15-minute moves beyond Kalshi’s price.</div>
+  <h2>🐋 Big money moving <span class="mut">· large transfers &amp; trades of $25,000 or more · context only, none of it feeds the engine</span></h2>
+  <div class="mut" style="font-size:12.5px;margin-bottom:8px"><b>A quick heads-up from me:</b> On-chain items are large <b>transfers</b> seen in the Bitcoin mempool: the amount includes change sent back to the sender, and nothing tells us whether it is a buy, a sale or a wallet shuffle, so no direction is shown. Exchange items are real <b>trades</b> with the exchange-reported taker side. Everything is counted only while this page is open, so each total shows how long it was actually watched. Earlier backtests found large flows did not predict 15-minute moves beyond Kalshi’s price.</div>
   <div id="flowStatus"></div>
   <div id="flowSum" style="margin-top:10px"></div>
   <div class="row" style="margin:12px 0 6px"><label class="mut" style="font-size:13px">Latest items <select id="flowKind"><option value="all">all types</option><option value="tx">on-chain transfers</option><option value="tr">exchange trades</option><option value="lq">liquidations</option></select></label><button class="small" id="flowCsv">⬇ Export CSV</button><button class="small" id="flowClear">Clear</button><span class="mut" style="font-size:12px" id="flowMeta"></span></div>
@@ -214,13 +278,13 @@ select{font:inherit;color:var(--tx);background:#0d1320;border:1px solid var(--li
 </section>
 
 <section class="card">
-  <h2>Signal votes <span class="mut" style="text-transform:none;letter-spacing:0" id="sigMeta"></span></h2>
+  <h2>🗳️ How each signal voted <span class="mut" id="sigMeta"></span></h2>
   <div id="signals" class="mut">Loading…</div>
 </section>
 
 <div class="grid g2">
   <section class="card">
-    <h2>Engine record</h2>
+    <h2>⚙️ The engine’s track record</h2>
     <div class="row" style="gap:22px" id="engRec"></div>
   </section>
   <section class="card">
@@ -230,7 +294,7 @@ select{font:inherit;color:var(--tx);background:#0d1320;border:1px solid var(--li
 </div>
 
 <section class="card">
-  <h2>Sources <span class="mut" style="text-transform:none;letter-spacing:0" id="srcMeta"></span></h2>
+  <h2>🔌 Where the prices come from <span class="mut" id="srcMeta"></span></h2>
   <div class="tw"><table id="srcTable"><thead><tr>
     <th>Source</th><th class="l">Pair</th><th>Last price</th><th>vs median</th><th>15m change</th><th>Updated</th><th class="l">Status</th>
   </tr></thead><tbody></tbody></table></div>
@@ -238,14 +302,14 @@ select{font:inherit;color:var(--tx);background:#0d1320;border:1px solid var(--li
 </section>
 
 <section class="card">
-  <h2>15-minute closes across sources</h2>
+  <h2>🕒 15-minute closes, source by source</h2>
   <div class="chartbox"><canvas id="priceChart"></canvas></div>
   <div class="row" style="margin-top:8px"><button class="small" id="tvBtn">Load TradingView chart (third-party, optional)</button><span class="mut" style="font-size:12px">Not loaded by default, so nothing leaves your browser unless you click.</span></div>
   <div id="tvBox" style="margin-top:8px"></div>
 </section>
 
 <section class="card">
-  <h2>Prediction log</h2>
+  <h2>📒 Every call so far</h2>
   <div class="row" style="margin-bottom:8px"><button class="small" id="csvBtn">⬇ Export CSV</button><span class="mut" style="font-size:12px" id="logMeta"></span></div>
   <div class="logwrap tw"><table id="logTable"><thead><tr>
     <th class="l">Window</th><th class="l">Type</th><th>Call</th><th>Conf</th><th>Open</th><th>Close</th><th>Actual</th><th>Result</th><th>Your bet</th><th>Bet result</th>
@@ -255,7 +319,7 @@ select{font:inherit;color:var(--tx);background:#0d1320;border:1px solid var(--li
 </section>
 
 <section class="card howto">
-  <h2>How it works</h2>
+  <h2>🧭 How it works</h2>
   <details open><summary>Plain-English version</summary>
   <ol>
     <li><b>Data.</b> Your browser asks free, keyless public APIs of many exchanges and price sites for BTC/USD (or BTC/USDT) 15-minute candles and spot prices. Only sources that actually answered are used; the table shows which ones did.</li>
@@ -280,6 +344,7 @@ select{font:inherit;color:var(--tx);background:#0d1320;border:1px solid var(--li
 (function(){try{var F='pulseboard.cleared.2026-11-12';if(!localStorage.getItem(F)){['pulseboard.v1','pulseboard.obook.v1'].forEach(function(k){localStorage.removeItem(k)});localStorage.setItem(F,String(Date.now()))}}catch(e){}})();
 </script>
 <script src="chart.umd.min.js"></script>
+<script src="ui.js"></script>
 <script src="engine.js"></script>
 <script>window.KALSHI_PROXY='https://kalshi-relay.rydawg2026.workers.dev'; /* read-only Cloudflare Worker, see tools/kalshi-proxy-worker.js */</script>
 <script src="kalshi.js"></script>
@@ -501,7 +566,7 @@ function renderCharts(st){
     var ds=C.ok.map(function(s,i){return {label:s.name.replace(/ \(.*\)/,''),data:ts.map(function(t){var k=S[s.id].map[t];return k?k.c:null}),borderColor:COLORS[i%COLORS.length],borderWidth:1,pointRadius:0,tension:.2,spanGaps:true}});
     ds.push({label:'Consensus median',data:ts.map(function(t){return C.cons[t].c}),borderColor:'#ffffff',borderWidth:3,pointRadius:0,tension:.2});
     if(priceChart){priceChart.data.labels=labels;priceChart.data.datasets=ds;priceChart.update('none')}
-    else priceChart=new Chart($('priceChart'),{type:'line',data:{labels:labels,datasets:ds},options:{responsive:true,maintainAspectRatio:false,animation:false,interaction:{mode:'index',intersect:false},plugins:{legend:{labels:{color:'#8b97b3',boxWidth:10,font:{size:10}}}},scales:{x:{ticks:{color:'#8b97b3',maxTicksLimit:8},grid:{color:'#1b2438'}},y:{ticks:{color:'#8b97b3'},grid:{color:'#1b2438'}}}}});
+    else priceChart=new Chart($('priceChart'),{type:'line',data:{labels:labels,datasets:ds},options:{responsive:true,maintainAspectRatio:false,animation:false,interaction:{mode:'index',intersect:false},plugins:{legend:{labels:{color:'#c9b8a8',boxWidth:10,font:{size:10}}}},scales:{x:{ticks:{color:'#c9b8a8',maxTicksLimit:8},grid:{color:'#3d3027'}},y:{ticks:{color:'#c9b8a8'},grid:{color:'#3d3027'}}}}});
   }
   var lab=[],ew=[],el=[],bw=[],bl=[],a=0,b=0,c=0,d=0;
   st.ks.forEach(function(w){var k=state.calls[w];if(!k.res||k.res==='push')return;
@@ -510,7 +575,7 @@ function renderCharts(st){
     lab.push(hhmm(w));ew.push(a);el.push(b);bw.push(c);bl.push(d)});
   var wd=[{label:'Engine wins',data:ew,borderColor:'#2fd18b',pointRadius:0,borderWidth:2},{label:'Engine losses',data:el,borderColor:'#ff5d73',pointRadius:0,borderWidth:2},{label:'Your bet wins',data:bw,borderColor:'#5aa9ff',borderDash:[5,3],pointRadius:0,borderWidth:2},{label:'Your bet losses',data:bl,borderColor:'#ffb454',borderDash:[5,3],pointRadius:0,borderWidth:2}];
   if(wlChart){wlChart.data.labels=lab;wlChart.data.datasets=wd;wlChart.update('none')}
-  else wlChart=new Chart($('wlChart'),{type:'line',data:{labels:lab,datasets:wd},options:{responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{labels:{color:'#8b97b3',boxWidth:10,font:{size:11}}}},scales:{x:{ticks:{color:'#8b97b3',maxTicksLimit:8},grid:{color:'#1b2438'}},y:{beginAtZero:true,ticks:{color:'#8b97b3',precision:0},grid:{color:'#1b2438'}}}}});
+  else wlChart=new Chart($('wlChart'),{type:'line',data:{labels:lab,datasets:wd},options:{responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{labels:{color:'#c9b8a8',boxWidth:10,font:{size:11}}}},scales:{x:{ticks:{color:'#c9b8a8',maxTicksLimit:8},grid:{color:'#3d3027'}},y:{beginAtZero:true,ticks:{color:'#c9b8a8',precision:0},grid:{color:'#3d3027'}}}}});
 }
 
 /* ---------- actions ---------- */

@@ -74,10 +74,10 @@ function render(d,ctx){
   var labels=[];for(var i=0;i<16;i++)labels.push(i+'m');
   var ds=[{label:'this window (Kalshi UP %)',data:series(d.cand_cur||[],open),borderColor:'#f7931a',borderWidth:2,pointRadius:1,spanGaps:true,tension:.15}];
   if(d.prev&&(d.cand_prev||[]).length)ds.push({label:'previous window ('+(d.prev.result==='yes'?'settled UP':'settled DOWN')+')',data:series(d.cand_prev,Date.parse(d.prev.open_time)/1000),borderColor:'#5aa9ff',borderWidth:1.5,borderDash:[5,3],pointRadius:0,spanGaps:true,tension:.15});
-  ds.push({label:'50%',data:labels.map(function(){return 50}),borderColor:'#8b97b3',borderWidth:1,pointRadius:0,borderDash:[2,3]});
+  ds.push({label:'50%',data:labels.map(function(){return 50}),borderColor:'#c9b8a8',borderWidth:1,pointRadius:0,borderDash:[2,3]});
   if(typeof Chart!=='undefined'){
     if(chart){chart.data.labels=labels;chart.data.datasets=ds;chart.update('none')}
-    else chart=new Chart($('kalshiChart'),{type:'line',data:{labels:labels,datasets:ds},options:{responsive:true,maintainAspectRatio:false,animation:false,interaction:{mode:'index',intersect:false},plugins:{legend:{labels:{color:'#8b97b3',boxWidth:10,font:{size:10}}}},scales:{x:{title:{display:true,text:'minutes into the 15-minute window',color:'#8b97b3'},ticks:{color:'#8b97b3',maxTicksLimit:16},grid:{color:'#1b2438'}},y:{min:0,max:100,ticks:{color:'#8b97b3',callback:function(v){return v+'%'}},grid:{color:'#1b2438'}}}}});
+    else chart=new Chart($('kalshiChart'),{type:'line',data:{labels:labels,datasets:ds},options:{responsive:true,maintainAspectRatio:false,animation:false,interaction:{mode:'index',intersect:false},plugins:{legend:{labels:{color:'#c9b8a8',boxWidth:10,font:{size:10}}}},scales:{x:{title:{display:true,text:'minutes into the 15-minute window',color:'#c9b8a8'},ticks:{color:'#c9b8a8',maxTicksLimit:16},grid:{color:'#3d3027'}},y:{min:0,max:100,ticks:{color:'#c9b8a8',callback:function(v){return v+'%'}},grid:{color:'#3d3027'}}}}});
   }
 }
 function fail(e){

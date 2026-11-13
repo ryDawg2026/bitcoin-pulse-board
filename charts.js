@@ -6,7 +6,7 @@
    Nothing is back-filled or invented: a strip with no samples says so. Earlier backtests found these signals did not predict 15-minute moves beyond Kalshi's price. */
 (function(){
 'use strict';
-var Q=900,SIGKEY='pulseboard.sig.v1',GREEN='#2fd18b',RED='#ff5d73',BLUE='#5aa9ff',AMB='#ffb454',MUT='#8b97b3',GRID='#1b2438';
+var Q=900,SIGKEY='pulseboard.sig.v1',GREEN='#2fd18b',RED='#ff5d73',BLUE='#5aa9ff',AMB='#ffb454',MUT='#c9b8a8',GRID='#3d3027';
 function $(i){return document.getElementById(i)}
 function nowS(){return Math.floor(Date.now()/1000)}
 function num(x){var v=parseFloat(x);return isFinite(v)?v:NaN}
@@ -72,7 +72,7 @@ var LAY={};
 function draw(){
   var cv=$('pcChart');if(!cv)return;
   var tf=C.tf,def=TF[tf],all=C.data[tf],f=fit(cv),x=f.x,W=f.w,H=f.h;
-  if(!all||!all.length){x.fillStyle=MUT;x.font='13px system-ui';x.fillText((C.info[tf]&&C.info[tf].err)?'Candles unavailable: '+C.info[tf].err:'Loading candles…',14,28);return}
+  if(!all||!all.length){x.fillStyle=MUT;x.font='13px system-ui';x.fillText((C.info[tf]&&C.info[tf].err)?'Candles unavailable: '+C.info[tf].err:'Fetching the candles for you…',14,28);return}
   var cs=all.slice(-def.show),padL=8,padR=64,padT=10,padB=22,volH=Math.round(H*.16),ph=H-padT-padB-volH-6,pw=W-padL-padR,n=cs.length,step=pw/(n+1),bw=Math.max(1,Math.min(14,step*.68));
   var cw=curWindow(),ps=pastStrikes(),lo=Infinity,hi=-Infinity,vmax=0;
   cs.forEach(function(k){lo=Math.min(lo,k.l);hi=Math.max(hi,k.h);vmax=Math.max(vmax,k.v)});
@@ -91,8 +91,8 @@ function draw(){
   x.textAlign='center';x.textBaseline='alphabetic';
   for(var w=wa;w<=t1;w+=Q){
     var xa=XT(w)-step*.5,xb=XT(w+Q)-step*.5;
-    if(((w/Q)|0)%2===0){x.fillStyle='rgba(90,169,255,.035)';var l=Math.max(padL,xa),r=Math.min(W-padR,xb);if(r>l)x.fillRect(l,padT,r-l,ph+volH+6)}
-    if(xa>=padL&&xa<=W-padR){x.strokeStyle='rgba(139,151,179,.35)';x.setLineDash([3,4]);x.beginPath();x.moveTo(Math.round(xa)+.5,padT);x.lineTo(Math.round(xa)+.5,H-padB);x.stroke();x.setLineDash([]);if(((w/Q)|0)%lblEvery===0){x.fillStyle=MUT;x.fillText(hhmm(w),xa,H-6)}}
+    if(((w/Q)|0)%2===0){x.fillStyle='rgba(255,200,140,.045)';var l=Math.max(padL,xa),r=Math.min(W-padR,xb);if(r>l)x.fillRect(l,padT,r-l,ph+volH+6)}
+    if(xa>=padL&&xa<=W-padR){x.strokeStyle='rgba(201,184,168,.35)';x.setLineDash([3,4]);x.beginPath();x.moveTo(Math.round(xa)+.5,padT);x.lineTo(Math.round(xa)+.5,H-padB);x.stroke();x.setLineDash([]);if(((w/Q)|0)%lblEvery===0){x.fillStyle=MUT;x.fillText(hhmm(w),xa,H-6)}}
     var p=ps[w];
     if(p&&isFinite(p.strike)&&w+Q<=t1+Q){var ya=Y(p.strike);if(ya>padT&&ya<padT+ph){x.strokeStyle='rgba(255,180,84,.55)';x.lineWidth=1;x.setLineDash([2,3]);x.beginPath();x.moveTo(Math.max(padL,xa),ya);x.lineTo(Math.min(W-padR,xb),ya);x.stroke();x.setLineDash([])}}
   }
@@ -106,14 +106,14 @@ function draw(){
     x.fillStyle=AMB;x.textAlign='right';x.textBaseline='alphabetic';x.font='bold 11px system-ui';x.fillText('strike '+usd(cw.strike,2),W-padR-6,Math.max(padT+12,Math.min(padT+ph-4,ys-5)))}}
   // last price tag
   var last=cs[n-1],yl=Y(last.c),lc=last.c>=last.o?GREEN:RED;x.strokeStyle=lc;x.lineWidth=1;x.setLineDash([1,3]);x.beginPath();x.moveTo(padL,yl);x.lineTo(W-padR,yl);x.stroke();x.setLineDash([]);
-  x.fillStyle=lc;x.fillRect(W-padR+1,yl-8,padR-2,16);x.fillStyle='#08101c';x.textAlign='left';x.textBaseline='middle';x.font='bold 11px system-ui';x.fillText(usd(last.c,0),W-padR+5,yl);
+  x.fillStyle=lc;x.fillRect(W-padR+1,yl-8,padR-2,16);x.fillStyle='#1c1612';x.textAlign='left';x.textBaseline='middle';x.font='bold 11px system-ui';x.fillText(usd(last.c,0),W-padR+5,yl);
   // hover crosshair
-  if(C.hover>=0&&C.hover<n){var k=cs[C.hover],hx=Math.round(X(C.hover))+.5;x.strokeStyle='rgba(230,236,247,.35)';x.setLineDash([2,3]);x.beginPath();x.moveTo(hx,padT);x.lineTo(hx,H-padB);x.stroke();x.setLineDash([])}
+  if(C.hover>=0&&C.hover<n){var k=cs[C.hover],hx=Math.round(X(C.hover))+.5;x.strokeStyle='rgba(253,243,232,.35)';x.setLineDash([2,3]);x.beginPath();x.moveTo(hx,padT);x.lineTo(hx,H-padB);x.stroke();x.setLineDash([])}
   var ro=$('pcReadout');
   if(ro){var k2=(C.hover>=0&&C.hover<n)?cs[C.hover]:last,inf=C.info[tf]||{};
     ro.innerHTML='<b>'+new Date(k2.t*1000).toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})+'</b> · O '+usd(k2.o,2)+' H '+usd(k2.h,2)+' L '+usd(k2.l,2)+' C <b class="'+(k2.c>=k2.o?'up-t':'dn-t')+'">'+usd(k2.c,2)+'</b> ('+(k2.c>=k2.o?'+':'−')+usd(Math.abs(k2.c-k2.o),2)+') · vol '+k2.v.toFixed(1)+' BTC'+(C.hover<0?' <span class="mut">(latest, still forming)</span>':'');}
   var nt=$('pcNote');
-  if(nt){var inf2=C.info[tf]||{};nt.innerHTML='Candles: <b>'+esc(inf2.src||'—')+'</b>'+(inf2.at?' · updated '+Math.round((Date.now()-inf2.at)/1000)+' s ago':'')+' · showing '+n+' × '+tf+' candles · dashed amber = '+esc(cw.src||'strike not available')+(isFinite(cw.strike)?' ('+usd(cw.strike,2)+')':'')+' · dotted grey = 15-minute window boundaries · small amber ticks = earlier windows’ Kalshi strikes. The strike is a BRTI 60-second average, so it can sit a few dollars away from this exchange’s candles.'}
+  if(nt){var inf2=C.info[tf]||{};nt.innerHTML='Here’s what I’m showing. Candles from <b>'+esc(inf2.src||'—')+'</b>'+(inf2.at?' · updated '+Math.round((Date.now()-inf2.at)/1000)+' s ago':'')+' · showing '+n+' × '+tf+' candles · dashed amber = '+esc(cw.src||'strike not available')+(isFinite(cw.strike)?' ('+usd(cw.strike,2)+')':'')+' · dotted grey = 15-minute window boundaries · small amber ticks = earlier windows’ Kalshi strikes. The strike is a BRTI 60-second average, so it can sit a few dollars away from this exchange’s candles.'}
 }
 function hoverAt(clientX){var cv=$('pcChart');if(!cv||!LAY.cs)return;var r=cv.getBoundingClientRect(),px=clientX-r.left,i=Math.round((px-LAY.padL)/LAY.step-.5);C.hover=(i>=0&&i<LAY.cs.length)?i:-1;draw()}
 
@@ -140,8 +140,8 @@ function stripLine(id,pts,t0,t1,opt){ // pts [[t,v]]; opt {zero,min,max,col,step
   if(!cnt||!isFinite(lo)){x.fillStyle=MUT;x.font='12px system-ui';x.textAlign='left';x.fillText(opt.empty||'no samples yet',pl+2,pt+ph/2);axisTimes(x,w,h,t0,t1,pl,pr);return false}
   if(hi===lo){hi+=1;lo-=1}var pd=(hi-lo)*.08;if(opt.min==null)lo-=pd;if(opt.max==null)hi+=pd;
   function X(t){return pl+(w-pl-pr)*(t-t0)/(t1-t0)}function Y(v){return pt+ph*(1-(v-lo)/(hi-lo))}
-  if(opt.bounds)opt.bounds.forEach(function(b){if(b>=t0&&b<=t1){x.strokeStyle='rgba(139,151,179,.3)';x.setLineDash([2,3]);x.beginPath();x.moveTo(Math.round(X(b))+.5,pt);x.lineTo(Math.round(X(b))+.5,pt+ph);x.stroke();x.setLineDash([])}});
-  if(opt.zero&&0>lo&&0<hi){x.strokeStyle='rgba(139,151,179,.5)';x.beginPath();x.moveTo(pl,Math.round(Y(0))+.5);x.lineTo(w-pr,Math.round(Y(0))+.5);x.stroke()}
+  if(opt.bounds)opt.bounds.forEach(function(b){if(b>=t0&&b<=t1){x.strokeStyle='rgba(201,184,168,.3)';x.setLineDash([2,3]);x.beginPath();x.moveTo(Math.round(X(b))+.5,pt);x.lineTo(Math.round(X(b))+.5,pt+ph);x.stroke();x.setLineDash([])}});
+  if(opt.zero&&0>lo&&0<hi){x.strokeStyle='rgba(201,184,168,.5)';x.beginPath();x.moveTo(pl,Math.round(Y(0))+.5);x.lineTo(w-pr,Math.round(Y(0))+.5);x.stroke()}
   groups.forEach(function(g){var ps=g.pts.filter(function(p){return p[0]>=t0&&p[0]<=t1});if(!ps.length)return;x.strokeStyle=g.col;x.lineWidth=1.6;x.beginPath();var prev=null;
     ps.forEach(function(p,i){var px=X(p[0]),py=Y(p[1]);if(i===0)x.moveTo(px,py);else if(opt.step||(prev&&p[0]-prev>(g.gapS||1e9))){if(opt.step){x.lineTo(px,Y(ps[i-1][1]))}else{x.moveTo(px,py)}x.lineTo(px,py)}else x.lineTo(px,py);prev=p[0]});x.stroke();
     var lp=ps[ps.length-1];x.fillStyle=g.col;x.beginPath();x.arc(X(lp[0]),Y(lp[1]),2.5,0,7);x.fill()});

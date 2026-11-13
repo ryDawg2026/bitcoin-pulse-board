@@ -69,7 +69,7 @@ with sync_playwright() as p:
   print('G1 why:',json.loads(why0)['g1']['lines']);print('G2 why:',json.loads(why0)['g2']['lines'],'forced' if json.loads(why0)['forced2'] else '')
   # ---- large transfers tracker ----
   pg.evaluate("Object.values(FlowTracker._status()).forEach(f=>f.next=1e18)")
-  chk('flows tracker card present with 3 summaries',pg.locator('#flowCard').count()==1 and pg.locator('#flowSum .mini').count()==3)
+  chk('flows tracker card present with 3 summaries',pg.locator('#flowCard').count()==1 and pg.locator('#flowSum .ctxgrid .mini').count()==3)
   st_=pg.evaluate("Object.fromEntries(Object.entries(FlowTracker._status()).map(([k,v])=>[k,[v.ok,v.err]]))");print('flow feed status',st_)
   chk('each flow feed shows live or an explicit unavailable',pg.locator('#flowStatus .pill').count()==4 and all(('live' in x or 'unavailable' in x) for x in pg.locator('#flowStatus .pill').all_inner_texts()),str(pg.locator('#flowStatus .pill').all_inner_texts()))
   r=pg.evaluate("""(()=>{FlowTracker._clear();const now=Date.now()/1000;const T=FlowTracker._tier;const out={};
@@ -134,14 +134,14 @@ with sync_playwright() as p:
       settled.push({result:p[1],close_time:new Date((W+900)*1000).toISOString(),expiration_value:'70010.5',floor_strike:70000})});
     const Wp=W0-30*900;s.groks[Wp]={W:Wp,g1:'UP',g2:'DOWN',conf:50,noedge:false,lockedAt:Wp+3,late:false,why:null,kres:null,winner:null}; // never settled in the list
     const changed=GrokkyPanel.onKalshi({settled:settled.slice().reverse()});const again=GrokkyPanel.onKalshi({settled:settled});const t=GrokkyPanel.tally();
-    return {changed:changed,again:again,w1:t.w1,w2:t.w2,n:t.n,pend:t.pend,cur1:t.cur1,cur2:t.cur2,best1:t.best1,best2:t.best2,ne:t.ne,txt:document.getElementById('gkScore').innerText,rows:document.querySelectorAll('#gkScore tbody tr').length,chart:document.getElementById('gkChart')&&document.getElementById('gkChart').width>0}})()""")
+    return {changed:changed,again:again,w1:t.w1,w2:t.w2,n:t.n,pend:t.pend,cur1:t.cur1,cur2:t.cur2,best1:t.best1,best2:t.best2,ne:t.ne,txt:(()=>{const c=document.getElementById('gkScore').cloneNode(true);c.querySelectorAll('.cu').forEach(e=>{const d=+(e.dataset.d||0),v=+e.dataset.v;e.textContent=(e.dataset.pre||'')+(d?v.toFixed(d):Math.round(v))+(e.dataset.suf||'')});document.body.appendChild(c);const s=c.innerText;c.remove();return s})(),rows:document.querySelectorAll('#gkScore tbody tr').length,chart:document.getElementById('gkChart')&&document.getElementById('gkChart').width>0}})()""")
   print('tally',{k:v for k,v in tl.items() if k!='txt'})
   chk('tally: Grokky 1 won 4, Grokky 2 won 3 of 7 scored (winner = whoever matched Kalshi result)',tl['w1']==4 and tl['w2']==3 and tl['n']==7,str(tl['w1'])+'/'+str(tl['w2']))
   chk('re-scoring is idempotent',tl['changed']==7 and tl['again']==0)
   chk('current streaks: Grokky 1 W3, Grokky 2 L3; best runs 3/3',tl['cur1']==3 and tl['cur2']==-3 and tl['best1']==3 and tl['best2']==3,str((tl['cur1'],tl['cur2'],tl['best1'],tl['best2'])))
   chk('no-edge round scored and noted (1 round, Grokky 2 won it)',tl['ne']['n']==1 and tl['ne']['w2']==1 and 'no edge' in tl['txt'].lower())
   chk('unsettled old round shown as awaiting Kalshi settlement (pending=1)',tl['pend']==1 and 'awaiting Kalshi settlement' in tl['txt'])
-  chk('scoreboard text: 4 / 7 correct, 57.1%, history rows, chart drawn',('4 / 7 correct' in tl['txt']) and ('57.1%' in tl['txt']) and tl['rows']>=8 and tl['chart'],tl['txt'][:160].replace('\n',' '))
+  chk('scoreboard text: 4 / 7 correct, 57.1%, history rows, chart drawn',('4 of 7 correct' in tl['txt']) and ('57.1%' in tl['txt']) and tl['rows']>=8 and tl['chart'],tl['txt'][:160].replace('\n',' '))
   p3.evaluate("(()=>{const s=window.__pulse.state();const W0=Math.floor(Date.now()/900000)*900;GrokkyPanel.lock(W0,s.calls[W0]);GrokkyPanel.update()})()");p3.wait_for_timeout(500);p3.screenshot(path=out+f'{tag}-seeded-top.png',full_page=True,clip={'x':0,'y':0,'width':1280,'height':1250})
   c3.close()
   # ---- degraded: flow feeds blocked -> explicit "unavailable", nothing invented, no page errors ----
@@ -197,7 +197,7 @@ with sync_playwright() as p:
   seed="""([off,w])=>{const s=window.__pulse.state();s.groks=s.groks||{};const W=Math.floor(Date.now()/1000/900)*900-off*3600;s.groks[W]=Object.assign({W:W,g1:'DOWN',g2:'UP',conf:61,noedge:false,strong:false,lockedAt:W+5,late:false,winner:2,kres:'yes',kexp:70131.4,kstrike:70128.1,seeded:1},w);window.__pulse.save();GrokkyPanel.update(true);return W}"""
   W=pg.evaluate("("+seed+")([5,{why:{at:1,g1:{lines:['RSI(14) 71 — overbought'],idx:[0],n:1,against:1},g2:{lines:['Large exchange trades: taker buys $2.1M'],idx:[1],n:1,against:1},forced2:false,haveCtx:true,neutral:[],typ:{usd:96,pct:0.0013},items:[{src:'engine',dir:'DOWN',m:.3,txt:'RSI(14) 71 — overbought'},{src:'ctx',dir:'UP',m:2,txt:'Large exchange trades: taker buys $2.1M'}]},px:{o:70100,c:70131,hi:70160,lo:70080,tHi:1,tLo:2,above:9,below:5,n:15,src:'test candles'}}])")
   pm=pg.locator('#pmBody').inner_text()
-  chk('post-mortem names the loser and is first person',pm.startswith('Grokky 1 lost') and 'I picked' in pm and 'my side' in pm,pm[:90])
+  chk('post-mortem names the loser and is first person',pm.startswith('Grokky 1 here') and 'I lost' in pm and 'I picked' in pm and 'my side' in pm,pm[:90])
   chk('post-mortem states final vs strike, move size and typical-move ratio',('$70,131.40' in pm and '$70,128.10' in pm and '$3.30' in pm and 'razor-thin' in pm),pm[200:420])
   chk('post-mortem lists my cited reading as wrong and the opposing reading that was right',('every one of them was wrong' in pm) and 'RSI(14) 71' in pm and 'Large exchange trades: taker buys $2.1M' in pm and 'turned out correct' in pm)
   chk('post-mortem uses candle path only because it was stored',('test candles' in pm) and ('5 of 15 minutes' in pm))
@@ -274,6 +274,54 @@ with sync_playwright() as p:
   # manual refresh
   pg.click('#refreshBtn');pg.wait_for_function("document.getElementById('refreshBtn').textContent.includes('Refresh now')&&!document.getElementById('refreshBtn').disabled",timeout=60000)
   chk('manual refresh works',True)
+  # ---- friendly redesign: first-person voice, decision trails, motion, mobile ----
+  nar=pg.evaluate("""(()=>{const g=[...document.querySelectorAll('#gk1,#gk2,#gkScore .say,#pmBody .pmhead')].map(e=>e.innerText).join(' ');
+    return {note:document.querySelectorAll('.gknote').length,third:(g.match(/\\bGrokky [12] (is|was|has|says|thinks|picked|chose|lost|won|follows|believes)\\b|\\bthe Grokkys?\\b|\\bthey\\b/gi)||[]),first:/\\bI(’m| am| picked| locked|’ll)\\b/.test(document.getElementById('gk1').innerText)&&/\\bI(’m| am| picked| locked|’ll)\\b/.test(document.getElementById('gk2').innerText)}})()""")
+  chk('no third-person narrator block; the two Grokky cards speak in first person',nar['note']==0 and not nar['third'] and nar['first'],str(nar))
+  chk('Grokky avatars are inline SVG',pg.locator('#gk1 svg.av1').count()==1 and pg.locator('#gk2 svg.av2').count()==1)
+  # expanders toggle smoothly and stay open across re-render
+  x=pg.locator('#gk1 [data-xp="why1"]');x.locator('.xpb').click()
+  chk('"Why?" expander opens',x.locator('.xp.open').count()==1 and x.locator('.xpb').get_attribute('aria-expanded')=='true')
+  pg.evaluate("GrokkyPanel.update()");pg.wait_for_timeout(1300)
+  chk('expander stays open after the card re-renders',pg.locator('#gk1 [data-xp="why1"] .xp.open').count()==1)
+  st=pg.evaluate("(()=>{const s=window.__pulse.state();const W=Math.floor(Date.now()/900000)*900;const w=s.groks[W].why;return {n:(w.items||[]).length,p:(w.passed||[]).length,l1:w.g1.lines[0]||null,pass0:(w.passed||[])[0]||null,neutral:(w.neutral||[]).length}})()")
+  tx1=pg.locator('#gk1').text_content();tx2=pg.locator('#gk2').text_content()
+  chk('pick trail "Why I picked" quotes my real stored reading',('Why I picked' in tx1) and (st['l1'] is None or st['l1'] in tx1),str(st['l1'])[:80])
+  chk('"What else I considered" shows counts from the stored data (considered = counted + passed over)',('I looked at '+str(st['n']+st['p'])+' readings') in tx1 and ('What else I considered' in tx2),str(st))
+  chk('passed-over readings listed from real data',st['p']==0 or (st['pass0'] and st['pass0'] in tx1),str(st['pass0'])[:80])
+  pg.locator('#gk1 [data-xp="why1"] .xpb').click()
+  chk('"Why?" expander closes again',pg.locator('#gk1 [data-xp="why1"] .xp.open').count()==0)
+  pg.locator('#gk1 [data-xp="why1"] .xpb').click()
+  # scoreboard round trail: seeded rounds from the tally test were cleared by reset, so seed one settled round
+  pg.evaluate("""(()=>{const s=window.__pulse.state();const W=(Math.floor(Date.now()/900000)-3)*900;
+    s.groks[W]={W:W,g1:'UP',g2:'DOWN',conf:61,lockedAt:W+5,px:70000,kres:'no',kexp:69950,kstrike:70000,winner:2,why:{items:[{dir:'UP',txt:'Settlement gap +$40 above strike',src:'x'},{dir:'DOWN',txt:'Funding negative',src:'y'}],passed:['Whale transfers: nothing over $25k seen'],neutral:['Kalshi book: no side'],g1:{lines:['Settlement gap +$40 above strike'],n:1,against:1},g2:{lines:['Funding negative'],n:1,against:1},forced2:false,typ:96}};
+    window.__pulse.save&&window.__pulse.save();GrokkyPanel.tally(Math.floor(Date.now()/1000));GrokkyPanel.update()})()""")
+  pg.wait_for_timeout(500)
+  r0=pg.locator('#gkScore tr[data-w]').first
+  if r0.count():
+    r0.click();pg.wait_for_timeout(700)
+    dt=pg.locator('#gkScore tr.dtl .xp.open').first.text_content()
+    chk('scored round has an expandable decision trail with why chosen + what else was considered',('What happened' in dt) and ('What else we considered' in dt) and ('Why I picked' in dt or 'why I picked' in dt),dt[:120])
+  else: chk('scored round row present for the trail test',False)
+  # tracker highlights: why surfaced, passed over, counts, duplicates
+  hl=pg.evaluate("""(()=>{FlowTracker._clear();const now=Date.now()/1000;
+    FlowTracker._add({i:'h1',t:now-30,k:'tx',s:'test',b:15,u:1050000,mx:1,n:2,h:'aa'});FlowTracker._add({i:'h2',t:now-20,k:'tr',s:'binance',b:3,u:210000,side:'buy',mx:1,n:1,h:'bb'});
+    FlowTracker._add({i:'h2',t:now-20,k:'tr',s:'binance',b:3,u:210000,side:'buy',mx:1,n:1,h:'bb'});
+    FlowTracker._cnt.tx.seen+=9;FlowTracker._cnt.tx.below+=8;FlowTracker.render();return JSON.parse(JSON.stringify(FlowTracker._cnt))})()""")
+  fs=pg.locator('#flowSum').text_content()
+  chk('tracker highlights each carry a "Why this one?" trail',pg.locator('#flowSum [data-xp^="hi"]').count()==2 and 'Why I surfaced this' in fs and '#1' in fs and 'dollar size' in fs,fs[:100])
+  chk('tracker "What else I considered": looked-at / passed-over / duplicates-rejected / kept counts from the real counters',('What else I considered' in fs) and hl['tx']['below']>=8 and hl['tr']['dup']>=1 and pg.locator('#flowSum [data-xp="passed"] table.ftab tbody tr').count()==3,str(hl))
+  chk('tracker says how many it shows vs how many it kept',('newest 2 of the 2 items') in fs,fs[-160:])
+  # reduced motion respected
+  rc=b.new_context(viewport={'width':1280,'height':900},reduced_motion='reduce');rp=rc.new_page();rp.goto(url);ready(rp);rp.wait_for_timeout(1500)
+  rm=rp.evaluate("""(()=>{const c=getComputedStyle(document.getElementById('gk1')),x=document.querySelector('.xp'),y=x?getComputedStyle(x):null;return {red:UI.reduced(),an:c.animationName,tr:y?y.transitionDuration:'0s',bar:[...document.querySelectorAll('.sbar i')].every(i=>i.style.width===i.getAttribute('data-w')+'%'),bal:document.getElementById('bal').textContent}})()""")
+  chk('prefers-reduced-motion: no CSS animation/transition, bars and numbers jump to final values',rm['red'] and rm['an']=='none' and rm['tr'] in ('0s','0s, 0s') and rm['bar'],str(rm))
+  rc.close()
+  # mobile with every trail expanded
+  m0=b.new_context(viewport={'width':390,'height':844},is_mobile=True,has_touch=True);m0p=m0.new_page();m0p.goto(url);ready(m0p);m0p.wait_for_timeout(1500)
+  m0p.evaluate("document.querySelectorAll('.xp').forEach(x=>x.classList.add('open'))");m0p.wait_for_timeout(600)
+  chk('mobile: no horizontal overflow even with every "Why?" section open',m0p.evaluate("document.documentElement.scrollWidth")<=392,str(m0p.evaluate("document.documentElement.scrollWidth")))
+  m0.close()
   # mobile
   m=b.new_context(viewport={'width':390,'height':844},device_scale_factor=2,is_mobile=True,has_touch=True)
   mp=m.new_page();mp.goto(url);ready(mp)
