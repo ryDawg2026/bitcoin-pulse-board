@@ -190,6 +190,9 @@ with sync_playwright() as p:
   pg.evaluate("ChartPanel.draw()")
   pg.locator('#chartCard').scroll_into_view_if_needed();pg.locator('#chartCard').screenshot(path=out+f'{tag}-chart-synthetic-check.png')
 
+  zk=pg.evaluate("""(()=>{const W=Math.floor(Date.now()/1000/900)*900,old=KalshiPanel.last;KalshiPanel.last=()=>({fetched_at:Math.floor(Date.now()/1000),current:{close_time:new Date((W+900)*1000).toISOString(),yes_bid_dollars:'0.00',yes_ask_dollars:'0.00',last_price_dollars:'0.00',floor_strike:'70000'}});try{const y=GrokkyPanel._buildWhy({W:W,g1:'UP',g2:'DOWN'});return {k:y.items.filter(x=>x.src==='kalshi').length,neutral:y.neutral.join('|')}}finally{KalshiPanel.last=old}})()""")
+  chk('a 0¢ / empty Kalshi market is never cited as a reading',zk['k']==0 and 'Kalshi price not loaded' in zk['neutral'],str(zk))
+
   # ---- loss post-mortem (first person, only stored data) ----
   seed="""([off,w])=>{const s=window.__pulse.state();s.groks=s.groks||{};const W=Math.floor(Date.now()/1000/900)*900-off*3600;s.groks[W]=Object.assign({W:W,g1:'DOWN',g2:'UP',conf:61,noedge:false,strong:false,lockedAt:W+5,late:false,winner:2,kres:'yes',kexp:70131.4,kstrike:70128.1,seeded:1},w);window.__pulse.save();GrokkyPanel.update(true);return W}"""
   W=pg.evaluate("("+seed+")([5,{why:{at:1,g1:{lines:['RSI(14) 71 — overbought'],idx:[0],n:1,against:1},g2:{lines:['Large exchange trades: taker buys $2.1M'],idx:[1],n:1,against:1},forced2:false,haveCtx:true,neutral:[],typ:{usd:96,pct:0.0013},items:[{src:'engine',dir:'DOWN',m:.3,txt:'RSI(14) 71 — overbought'},{src:'ctx',dir:'UP',m:2,txt:'Large exchange trades: taker buys $2.1M'}]},px:{o:70100,c:70131,hi:70160,lo:70080,tHi:1,tLo:2,above:9,below:5,n:15,src:'test candles'}}])")

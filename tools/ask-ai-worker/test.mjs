@@ -45,7 +45,7 @@ env._stream = () => sse(['{"response":"x"}']);
 r = await W.default.fetch(post(good), env); ok(r.status === 429 && /ip_daily_cap/.test(await txt(r)), 'per-IP daily cap enforced (429)');
 r = await W.default.fetch(post(good, { 'CF-Connecting-IP': '9.9.9.9' }), env); ok(r.status === 200, 'a different IP still served');
 await txt(r);
-r = await W.default.fetch(post(good, { 'CF-Connecting-IP': '8.8.8.8' }), env); ok(r.status === 429 && /daily_cap/.test(await txt(r)), 'global daily cap (3) enforced for everyone');
+r = await W.default.fetch(post(good, { 'CF-Connecting-IP': '8.8.8.8' }), env); ok(r.status === 429 && /"error":"daily_cap"/.test(await txt(r)), 'global daily cap (3) enforced for everyone');
 
 env = mkEnv({ DAILY_CAP: '50', IP_DAILY_CAP: '50' }); env._fail = ['@cf/openai/gpt-oss-120b'];
 r = await W.default.fetch(post(good), env); await txt(r);

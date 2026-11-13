@@ -38,7 +38,7 @@ function lock(W,call){
 function kalshiNow(W){
   var kp=window.KalshiPanel,l=kp&&kp.last&&kp.last(),m=l&&l.current;if(!m)return null;
   var w=Math.round(Date.parse(m.close_time)/1000)-Q;if(w!==W)return null;
-  var b=num(m.yes_bid_dollars),a=num(m.yes_ask_dollars),p=num(m.last_price_dollars),mid=(b>0&&a>0&&a<=1)?(b+a)/2:p;
+  var b=num(m.yes_bid_dollars),a=num(m.yes_ask_dollars),p=num(m.last_price_dollars),mid=(b>0&&a>0&&a<=1)?(b+a)/2:p;if(!(mid>0))mid=NaN; // a 0¢ price means "no market yet", never a reading
   return {mid:mid,strike:num(m.floor_strike),via:l._via,age:nowS()-(l.fetched_at||nowS())};
 }
 function items(rec,call,snap,kal){
