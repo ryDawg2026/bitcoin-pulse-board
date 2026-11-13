@@ -24,12 +24,55 @@ function opp(d){return d==='UP'?'DOWN':'UP'}
 function cls(d){return d==='UP'?'up-t':'dn-t'}
 function arrow(d){return d==='UP'?'▲ UP':'▼ DOWN'}
 
+/* ---------- what I've learned (separate key; never touches picks history) ----------
+   pulseboard.learn.v1 = {v:1, sig:{key:{n,hit}}, done:{W:1}}. For every SETTLED round I credit each stored reading that pointed the winning way ("hit") or the losing way.
+   Trust multiplier for a reading = 1 + 2·(smoothed accuracy − 50%), smoothed with a 50%-prior worth 10 rounds, bounded to 0.7×–1.3×, and only once that reading has been seen in 20 settled rounds.
+   Only Grokky 1's pick can move, and only through the ENGINE's own signals (multipliers re-weight the engine's published coefficients). Grokky 2 is still always opposite Grokky 1. */
+var LK='pulseboard.learn.v1',LEARN=null,L_MIN=20,L_LO=0.7,L_HI=1.3;
+function loadLearn(){if(LEARN)return LEARN;try{var s=JSON.parse(localStorage.getItem(LK)||'null');if(s&&s.v===1&&s.sig){LEARN=s;if(!s.done)s.done={};return s}}catch(e){}LEARN={v:1,sig:{},done:{}};return LEARN}
+function saveLearn(){try{localStorage.setItem(LK,JSON.stringify(LEARN))}catch(e){}}
+var LEGACY=[[/^1-hour overshoot/,'z4'],[/^Last-candle overshoot/,'z1'],[/^RSI\(14\) mean/,'rsi'],[/^Close location/,'clv'],[/^Cross-exchange premium/,'prem'],[/^Kalshi prices UP/,'kalshi'],[/^BRTI settlement average/,'gap'],[/^Kalshi order book/,'book'],[/^Large exchange trades/,'flow'],[/^OKX perp funding/,'funding'],[/^OKX liquidations/,'liq'],[/^Fear & Greed/,'fng'],[/^Chart \(/,'chart']];
+var LNAME={z4:'1-hour overshoot fade',z1:'last-candle overshoot',rsi:'RSI mean-reversion',clv:'close location',prem:'USD/USDT premium',kalshi:'Kalshi price',gap:'settlement gap',book:'order book',flow:'large-trade flow',funding:'funding rate',liq:'liquidations',fng:'Fear & Greed',chart:'chart overshoot','i:strike':'distance to strike','i:ema':'EMA cross','i:mom':'momentum','i:vwap':'VWAP','i:drift':'move since open','i:rsi':'1-min RSI','i:stretch':'30-min stretch','i:cvd':'CVD (buyers vs sellers)','i:prem':'Coinbase-vs-Binance premium','i:book':'Kalshi book'};
+function keyOf(x){if(!x)return null;if(x.k)return (x.src==='ind'?'i:':'')+x.k;for(var i=0;i<LEGACY.length;i++)if(LEGACY[i][0].test(String(x.txt||'')))return LEGACY[i][1];return null}
+function learnFrom(r){ // credit one settled round (once)
+  if(!r||!r.winner||!r.why||!r.why.items)return false;var L=loadLearn();if(L.done[r.W])return false;
+  var res=r.kres==='yes'?'UP':'DOWN',seen={};
+  r.why.items.forEach(function(x){var k=keyOf(x);if(!k||seen[k])return;seen[k]=1;var e=L.sig[k]||(L.sig[k]={n:0,hit:0});e.n++;if(x.dir===res)e.hit++});
+  L.done[r.W]=1;var ks=Object.keys(L.done).map(Number).sort(function(a,b){return a-b});while(ks.length>800)delete L.done[ks.shift()];
+  saveLearn();return true;
+}
+function learnAll(){var G=st().groks||{},ch=0;Object.keys(G).forEach(function(w){if(learnFrom(G[w]))ch++});return ch}
+function acc(e){return (e.hit+5)/(e.n+10)}
+function mult(k){var e=loadLearn().sig[k];if(!e||e.n<L_MIN)return 1;return clamp(1+2*(acc(e)-0.5),L_LO,L_HI)}
+function clamp(x,a,b){return Math.max(a,Math.min(b,x))}
+function learnSummary(){
+  var L=loadLearn(),rounds=Object.keys(L.done).length,rows=Object.keys(L.sig).map(function(k){var e=L.sig[k];return {k:k,n:e.n,hit:e.hit,a:e.n?e.hit/e.n:0,m:mult(k)}}).filter(function(x){return x.n>=3});
+  rows.sort(function(a,b){return b.a-a.a||b.n-a.n});
+  return {rounds:rounds,rows:rows,best:rows.slice(0,2),moved:rows.filter(function(x){return x.m!==1})};
+}
+function learnNote(n,rec){
+  var ls=learnSummary(),h='<h4>🌱 What I’ve learned</h4>';
+  if(!ls.rounds)return h+'<p>I’m just getting started: once rounds settle I’ll keep score of which readings pointed the right way and gently adjust how much I trust them. Nothing to report yet.</p>';
+  h+='<p>I’ve checked <b>'+ls.rounds+'</b> settled round'+(ls.rounds===1?'':'s')+' so far, crediting each reading that pointed the winning way.</p>';
+  function line(x){return (LNAME[x.k]||x.k)+': right '+x.hit+' of '+x.n+' ('+Math.round(x.a*100)+'%)'}
+  if(ls.rows.length){var top=ls.rows.slice(0,2),bot=ls.rows.slice(-2).filter(function(x){return top.indexOf(x)<0});
+    h+='<p class="tiny">Best so far: '+esc(top.map(line).join(' · '))+(bot.length?'<br>Weakest so far: '+esc(bot.map(line).join(' · ')):'')+'</p>'}
+  h+=ls.moved.length?'<p>Because readings need at least '+L_MIN+' settled rounds before I adjust, here’s what I now trust differently (always between '+L_LO+'× and '+L_HI+'×): '+esc(ls.moved.map(function(x){return (LNAME[x.k]||x.k)+' '+x.m.toFixed(2)+'×'}).join(', '))+'.</p>':'<p>I only adjust my trust in a reading after it has been seen in '+L_MIN+' settled rounds (and never by more than '+Math.round((L_HI-1)*100)+'%), so for now every reading still counts at 1.0×.</p>';
+  if(rec&&rec.learn)h+=n===1?'<p>'+(rec.learn.flipped?'This round my learning <b>changed my pick</b>: the engine said '+arrow(rec.learn.raw)+', but after re-weighting its signals I went with '+arrow(rec.g1)+'.':'This round my learning didn’t change my pick: I stayed with the engine’s '+arrow(rec.g1)+'.')+'</p>':'<p>I never change my rule: I take the opposite side of Grokky 1. What I learn changes which readings I trust, not my side.</p>';
+  return h;
+}
+
 /* ---------- lock ---------- */
 function lock(W,call){
   var s=st();if(!s.groks)s.groks={};var G=s.groks;
   if(G[W]||!call||(call.dir!=='UP'&&call.dir!=='DOWN'))return G[W]||null;
   var now=nowS();
-  G[W]={W:W,g1:call.dir,g2:opp(call.dir),conf:call.conf,pUp:1/(1+Math.exp(-(call.score||0))),noedge:!!call.noedge,strong:!!call.strong,lockedAt:now,late:now-W>90,why:null,kres:null,winner:null};
+  var dir=call.dir,conf=call.conf,pUp=1/(1+Math.exp(-(call.score||0))),lrn=null;
+  try{loadLearn();var adj=0,ch=[];(call.signals||[]).forEach(function(sg){var m=mult(sg.k);adj+=sg.w*sg.vote*m;if(m!==1)ch.push({k:sg.k,m:+m.toFixed(3)})});
+    if(ch.length){var ad=adj>0?'UP':adj<0?'DOWN':call.dir;lrn={raw:call.dir,flipped:ad!==call.dir,adj:+adj.toFixed(4),changed:ch};
+      if(lrn.flipped){dir=ad;pUp=1/(1+Math.exp(-adj));conf=Math.round((dir==='UP'?pUp:1-pUp)*100)}}
+    else lrn={raw:call.dir,flipped:false,adj:null,changed:[]}}catch(e){}
+  G[W]={W:W,g1:dir,g2:opp(dir),conf:conf,pUp:pUp,noedge:!!call.noedge,strong:!!call.strong,lockedAt:now,late:now-W>90,why:null,kres:null,winner:null,learn:lrn};
   var ks=Object.keys(G).map(Number).sort(function(a,b){return a-b});while(ks.length>CAPN)delete G[ks.shift()];
   H.save();return G[W];
 }
@@ -43,7 +86,7 @@ function kalshiNow(W){
 }
 function items(rec,call,snap,kal){
   var it=[],neutral=[],passed=[];
-  (call&&call.signals||[]).forEach(function(s){var c=s.w*s.vote;if(!isFinite(c))return;if(Math.abs(c)<0.003){passed.push('Engine signal “'+s.name+'”: '+s.desc+' — too close to neutral to count');return}it.push({src:'engine',pr:0,dir:c>0?'UP':'DOWN',m:Math.abs(c),txt:s.name+' — '+s.desc})});
+  (call&&call.signals||[]).forEach(function(s){var c=s.w*s.vote;if(!isFinite(c))return;if(Math.abs(c)<0.003){passed.push('Engine signal “'+s.name+'”: '+s.desc+' — too close to neutral to count');return}it.push({src:'engine',pr:0,k:s.k,dir:c>0?'UP':'DOWN',m:Math.abs(c),txt:s.name+' — '+s.desc})});
   if(kal&&isFinite(kal.mid)){var d=kal.mid-.5;
     if(Math.abs(d)>=.02)it.push({src:'kalshi',pr:7,dir:d>0?'UP':'DOWN',m:Math.abs(d),txt:'Kalshi prices UP at '+Math.round(kal.mid*100)+'¢, so the crowd leans '+(d>0?'UP':'DOWN')});
     else neutral.push('Kalshi prices this window at about even ('+Math.round(kal.mid*100)+'¢ UP), as expected near the open, so it doesn’t pick a side.')}
@@ -74,6 +117,14 @@ function items(rec,call,snap,kal){
   var cr=window.ChartPanel&&ChartPanel.reading&&ChartPanel.reading();
   if(cr&&Math.abs(cr.z)>=1.5)it.push({src:'chart',pr:8,dir:cr.z>0?'DOWN':'UP',m:Math.abs(cr.z),txt:'Chart ('+(cr.src||'1-minute candles')+'): BTC moved '+(cr.move>=0?'+':'−')+usd(Math.abs(cr.move),0)+' in the last 10 minutes ('+(cr.z>=0?'+':'−')+Math.abs(cr.z).toFixed(1)+'× a typical 10-minute move), an overshoot that tends to give back (mean-reversion reading → '+(cr.z>0?'DOWN':'UP')+'; only a small backtested edge)'});
   else if(cr)passed.push('Chart: the last 10 minutes moved '+(cr.move>=0?'+':'−')+usd(Math.abs(cr.move),0)+' ('+Math.abs(cr.z).toFixed(1)+'× typical) — not an overshoot, so no side');
+  var CK={1:'gap',2:'book',3:'flow',4:'funding',5:'liq',6:'fng'};it.forEach(function(x){if(!x.k)x.k=x.src==='kalshi'?'kalshi':x.src==='chart'?'chart':CK[x.pr]});
+  // price-action indicators (1-minute candles + Binance taker volume), read-only; only readings with a clear lean count
+  var iv=window.CallersPanel&&CallersPanel.latest&&CallersPanel.latest(rec.W);
+  if(iv&&iv.ok)iv.signals.forEach(function(sg){if(sg.group==='grokky'||sg.group==='info'||sg.k==='crowd'||sg.k==='book')return;
+    if(sg.na)passed.push('Price action “'+sg.name+'”: '+sg.desc);
+    else if(Math.abs(sg.vote)>=0.25)it.push({src:'ind',pr:9,k:sg.k,dir:sg.vote>0?'UP':'DOWN',m:Math.abs(sg.vote),txt:'Price action: '+sg.desc});
+    else passed.push('Price action “'+sg.name+'”: '+sg.desc+' — too mild to count')});
+  else if(rec.W===Math.floor(nowS()/Q)*Q)passed.push('Price-action indicators (VWAP, EMA, RSI, ATR, CVD…) weren’t loaded yet when I froze my reasons.');
   it.forEach(function(x,i){x.i=i});
   if(rec.noedge)neutral.push('The engine reports NO EDGE: its signals nearly cancel (backtest: coin flip). Scored anyway, because one side always wins.');
   return {it:it,neutral:neutral,passed:passed};
@@ -87,7 +138,7 @@ function buildWhy(rec){
   var call=st().calls&&st().calls[rec.W],snap=window.ContextPanel&&ContextPanel.snapshot?ContextPanel.snapshot(rec.W):null,kal=kalshiNow(rec.W);
   var e=items(rec,call,snap,kal),p1=pick(e.it,rec.g1,false),p2=pick(e.it,rec.g2,true);
   var ty=window.ChartPanel&&ChartPanel.typical15&&ChartPanel.typical15();
-  return {at:nowS(),g1:p1,g2:p2,neutral:e.neutral,passed:e.passed.slice(0,14).map(function(x){return String(x).slice(0,230)}),forced2:p2.lines.length===0,haveCtx:!!snap,items:e.it.slice(0,18).map(function(x){return {src:x.src,dir:x.dir,m:+(+x.m).toFixed(4),txt:String(x.txt).slice(0,230)}}),typ:ty&&isFinite(ty.usd)?{usd:Math.round(ty.usd*100)/100,pct:ty.pct}:null};
+  return {at:nowS(),g1:p1,g2:p2,neutral:e.neutral,passed:e.passed.slice(0,18).map(function(x){return String(x).slice(0,230)}),forced2:p2.lines.length===0,haveCtx:!!snap,items:e.it.slice(0,26).map(function(x){return {src:x.src,k:x.k,dir:x.dir,m:+(+x.m).toFixed(4),txt:String(x.txt).slice(0,230)}}),typ:ty&&isFinite(ty.usd)?{usd:Math.round(ty.usd*100)/100,pct:ty.pct}:null};
 }
 function maybeFreeze(rec,now){
   if(rec.why||now>=rec.W+Q)return;
@@ -103,7 +154,7 @@ function onKalshi(d){
     r.kres=res;r.kexp=num(m.expiration_value);r.kstrike=num(m.floor_strike);
     r.winner=((r.g1==='UP')===(res==='yes'))?1:2;changed++;
   });
-  if(changed){H.save();update(true)}
+  if(changed){learnAll();H.save();update(true)}
   return changed;
 }
 function ensurePx(now){
@@ -156,6 +207,7 @@ function pickTrail(n,rec,side){
   }else m+='<p>I didn’t save the full list of readings for this round (it was locked before I started keeping it), so I can only show my main reasons.</p>';
   if(passed.length)m+='<h4>Looked at, but didn’t count</h4>'+liUl(passed.slice(0,10));
   if(why.neutral&&why.neutral.length)m+='<h4>Had no side to give</h4>'+liUl(why.neutral);
+  m+=learnNote(n,rec);
   var tz=forced?'Honestly, nothing on the board points to '+arrow(side)+' — I’m the designated contrarian, so this is a forced opposite pick.':(me.lines.length?'Mostly because: '+me.lines[0]:'No single reading clears its threshold, so I’m sticking with my rule.');
   return {teaser:tz,why:w,more:m};
 }
@@ -175,7 +227,7 @@ function cardHtml(n,rec,t){
   h+=UI.xp('why'+n,'Why? How I chose '+arrow(side),tr.why)+UI.xp('more'+n,'What else I considered',tr.more);
   return h+foot(n,w,l,tot,cur);
 }
-function foot(n,w,l,tot,cur){return '<div class="gkfoot"><span>My record <b>'+UI.cu('gkw'+n,w)+' W</b> / <b>'+UI.cu('gkl'+n,l)+' L</b></span><span>'+(tot?'<b>'+UI.cu('gkr'+n,w/tot*100,{d:1,suf:'%'})+'</b> win rate':'no rounds scored yet')+'</span><span>streak <b class="'+(cur>0?'up-t':cur<0?'dn-t':'')+'">'+streakTxt(cur)+'</b></span></div><div class="tiny mut" style="font-size:12px;margin-top:6px">I only make paper picks: I never place bets or send anything to Kalshi.</div>'}
+function foot(n,w,l,tot,cur){return '<div class="gkfoot"><span>My record <b>'+UI.cu('gkw'+n,w)+' W</b> / <b>'+UI.cu('gkl'+n,l)+' L</b></span><span>'+(tot?'<b>'+UI.cu('gkr'+n,w/tot*100,{d:1,suf:'%'})+'</b> win rate':'no rounds scored yet')+'</span><span>streak <b class="'+(cur>0?'up-t':cur<0?'dn-t':'')+'">'+streakTxt(cur)+'</b></span></div><div class="tiny mut" style="font-size:12px;margin-top:6px">I only make paper picks: I never place bets or send anything to Kalshi.'+(function(){var r=Object.keys(loadLearn().done).length;return r?' 🌱 I’ve learned from '+r+' settled round'+(r===1?'':'s')+' so far.':''})()+'</div>'}
 function resultCell(r,now){return r.winner?'<span class="'+(r.kres==='yes'?'up-t':'dn-t')+'">'+(r.kres==='yes'?'▲ UP':'▼ DOWN')+'</span>':(r.W+Q>now?'<span class="mut">in progress</span>':'<span class="mut">awaiting Kalshi settlement</span>')}
 /* ---------- decision trail for a scored round ---------- */
 function roundTrail(r){
@@ -272,10 +324,10 @@ function csv(){
   Object.keys(G).map(Number).sort(function(a,b){return a-b}).forEach(function(w){var r=G[w];rows.push([new Date(w*1000).toLocaleString(),w,r.g1,r.g2,r.conf,r.noedge?'yes':'no',r.late?'yes':'no',r.kres||'',r.winner?'Grokky '+r.winner:'',isFinite(r.kexp)?r.kexp:'',isFinite(r.kstrike)?r.kstrike:'',r.lockedAt].map(function(x){return '"'+String(x).replace(/"/g,'""')+'"'}).join(','))});
   var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([rows.join('\n')],{type:'text/csv'}));a.download='grokky-rounds.csv';document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove()},500);
 }
-function init(host){H=host;if($('gkCsv'))$('gkCsv').onclick=csv;var sc=$('gkScore');if(sc)sc.addEventListener('click',function(e){var tr=e.target.closest&&e.target.closest('tr[data-w]');if(!tr)return;PMDEMO=null;PMSEL=+tr.getAttribute('data-w');var d=tr.nextElementSibling,x=d&&d.querySelector('.xp[data-xid]');if(x){var open=!x.classList.contains('open');x.classList.toggle('open',open);var id=x.getAttribute('data-xid');if(open)UI._open[id]=1;else delete UI._open[id];var ch=tr.querySelector('.chip .chev');if(ch)ch.style.transform=open?'rotate(90deg)':''}renderPM()});update()}
+function init(host){H=host;try{learnAll()}catch(e){}if($('gkCsv'))$('gkCsv').onclick=csv;var sc=$('gkScore');if(sc)sc.addEventListener('click',function(e){var tr=e.target.closest&&e.target.closest('tr[data-w]');if(!tr)return;PMDEMO=null;PMSEL=+tr.getAttribute('data-w');var d=tr.nextElementSibling,x=d&&d.querySelector('.xp[data-xid]');if(x){var open=!x.classList.contains('open');x.classList.toggle('open',open);var id=x.getAttribute('data-xid');if(open)UI._open[id]=1;else delete UI._open[id];var ch=tr.querySelector('.chip .chev');if(ch)ch.style.transform=open?'rotate(90deg)':''}renderPM()});update()}
 function showDemo(on){PMDEMO=on?demoRec():null;renderPM()}
 function demoRec(){var W=Math.floor(Date.now()/1000/Q)*Q-3*Q;return {W:W,g1:'UP',g2:'DOWN',conf:58,noedge:false,lockedAt:W+7,late:false,winner:1,kres:'yes',kexp:70412.55,kstrike:70371.2,px:{o:70368,c:70415,hi:70440,lo:70352,tHi:W+780,tLo:W+120,above:11,below:3,n:15,src:'Coinbase 1m (example)'},
   why:{at:W+8,g1:{lines:['1-hour overshoot — price fell 0.8% in an hour (−1.3σ), oversold','RSI(14) 28 — oversold'],idx:[0,1],n:2,against:2},g2:{lines:['BRTI settlement average is $34 below the strike with 14:50 left (DOWN if it ended now)','OKX perp funding +0.0300% per 8 h: longs are paying, crowded long side (contrarian reading → DOWN)'],idx:[2,3],n:2,against:2},forced2:false,haveCtx:true,neutral:[],typ:{usd:96,pct:0.0013},
    items:[{src:'engine',dir:'UP',m:.4,txt:'1-hour overshoot — price fell 0.8% in an hour (−1.3σ), oversold'},{src:'engine',dir:'UP',m:.2,txt:'RSI(14) 28 — oversold'},{src:'ctx',dir:'DOWN',m:1,txt:'BRTI settlement average is $34 below the strike with 14:50 left (DOWN if it ended now)'},{src:'ctx',dir:'DOWN',m:.03,txt:'OKX perp funding +0.0300% per 8 h: longs are paying, crowded long side (contrarian reading → DOWN)'}]}}}
-window.GrokkyPanel={showDemo:showDemo,postMortem:postMortem,init:init,lock:lock,update:update,onKalshi:onKalshi,tally:tally,_items:items,_pick:pick,_buildWhy:buildWhy,_csv:csv};
+window.GrokkyPanel={avatar:avatar,learnFrom:learnFrom,learnAll:learnAll,learnSummary:learnSummary,_mult:mult,_keyOf:keyOf,_loadLearn:loadLearn,_resetLearnCache:function(){LEARN=null},showDemo:showDemo,postMortem:postMortem,init:init,lock:lock,update:update,onKalshi:onKalshi,tally:tally,_items:items,_pick:pick,_buildWhy:buildWhy,_csv:csv};
 })();

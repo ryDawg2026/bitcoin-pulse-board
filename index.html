@@ -147,6 +147,32 @@ tr.clk td:last-child{position:relative}
 .cu{font-variant-numeric:tabular-nums}
 @media(max-width:560px){h1{font-size:21px}.card{padding:14px;border-radius:18px}.av{width:48px;height:48px;flex-basis:48px}.pickbig{font-size:23px}}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+/* ===== callers ===== */
+.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}@media(max-width:980px){.g3{grid-template-columns:minmax(0,1fr)}}
+.cc{background:var(--card2);border:1px solid var(--line);border-radius:var(--r);padding:14px;min-width:0}
+.sub3{margin:18px 0 8px;font-size:15px}.sub3 .mut{font-weight:500;font-size:12.5px}
+.avc{width:54px;height:54px;flex:0 0 54px}.av-mellow .eyes{animation-delay:2.4s}.av-ripple .eyes{animation-delay:3.4s}
+.gkname{display:flex;flex-direction:column;line-height:1.2}.gkname small{color:var(--mut);font-size:12.5px}
+.cb-zippy{background:rgba(255,180,84,.13);border:1px solid rgba(255,180,84,.32)}.cb-mellow{background:rgba(123,216,143,.12);border:1px solid rgba(123,216,143,.3)}.cb-ripple{background:rgba(108,195,255,.12);border:1px solid rgba(108,195,255,.3)}
+.mchips{display:flex;gap:8px;margin:10px 0 2px;flex-wrap:wrap}
+.mchip{display:inline-flex;flex-direction:column;align-items:center;min-width:58px;padding:5px 10px;border-radius:14px;border:1px solid var(--line);background:rgba(0,0,0,.18);line-height:1.15;position:relative}
+.mchip small{font-size:11px;color:var(--mut)}.mchip b{font-size:17px}.mchip i{position:absolute;top:-6px;right:-4px;font-style:normal;font-size:12px;background:var(--card);border-radius:50%;width:18px;height:18px;line-height:18px;text-align:center;border:1px solid var(--line)}
+.mchip.up{border-color:rgba(47,209,139,.55)}.mchip.up b{color:var(--up)}.mchip.dn{border-color:rgba(255,93,115,.55)}.mchip.dn b{color:var(--dn)}
+.mchip.win i{color:var(--up)}.mchip.loss i{color:var(--dn)}.mchip.wait,.mchip.miss{opacity:.6}.mchip.wait b{font-size:15px}
+.cmeter{display:flex;align-items:center;gap:8px;margin:8px 0 2px;font-size:11.5px;color:var(--mut)}.cmeter .sbar{flex:1;margin:0}.mlab{white-space:nowrap;font-size:11.5px}
+.sbar.upbar{background:linear-gradient(90deg,rgba(255,93,115,.55),rgba(255,93,115,.55))}.sbar.upbar i{background:linear-gradient(90deg,#2fd18b,#7be6b4)}
+.sbar.mbar i{background:linear-gradient(90deg,#ffa63d,#ffd27a)}
+.cfoot{margin-top:10px}.mbars{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:8px}.mb small{display:block;font-size:11.5px;color:var(--mut);white-space:nowrap}.mb .sbar{height:8px;margin:3px 0}
+.mtl{margin:2px 0 14px}.mtl-bar{position:relative;height:10px;background:rgba(0,0,0,.28);border-radius:99px;margin:8px 8px 22px}.mtl-bar>i{position:absolute;left:0;top:0;bottom:0;border-radius:99px;background:linear-gradient(90deg,#ffa63d,#ffd27a);transition:width 1s linear}
+.mtl-dot{position:absolute;top:50%;width:18px;height:18px;margin:-9px 0 0 -9px;border-radius:50%;background:var(--card);border:2px solid var(--line)}.mtl-dot em{position:absolute;top:21px;left:50%;transform:translateX(-50%);font-style:normal;font-size:11px;color:var(--mut);white-space:nowrap}.mtl-dot em::after{content:" min"}
+.mtl-dot.done{border-color:var(--up);background:rgba(47,209,139,.35)}.mtl-dot.due{border-color:var(--acc)}.mtl-dot.miss{border-color:var(--dn);opacity:.6}
+.ctab{width:100%;border-collapse:collapse;font-size:13px}.ctab th,.ctab td{padding:7px 8px;text-align:center;border-bottom:1px solid var(--line);vertical-align:middle}.ctab th.l,.ctab td.l{text-align:left}.ctab td small{display:block;color:var(--mut);font-size:11px}
+.ctab .sbar{height:7px;margin:3px auto 0;max-width:90px}.ctab tr.ref td{opacity:.8}.cn{display:inline-flex;align-items:center;gap:8px}.cn .av{width:30px;height:30px;flex-basis:30px}
+.cbtab th .av{width:30px;height:30px;display:block;margin:0 auto 2px}.cbtab th small{font-size:10.5px;color:var(--mut);font-weight:500}.cbtab td.ag{color:var(--up);font-weight:700}.cbtab td.dis{color:var(--dn);font-weight:700}.cbtab tr.tot td{border-top:2px solid var(--line)}
+.lean{display:inline-flex;align-items:center;gap:5px;font-size:12px;min-width:70px;justify-content:flex-start}.lean i{display:block;height:6px;border-radius:9px;max-width:46px;min-width:2px;background:var(--mut)}.lean.up{color:var(--up)}.lean.up i{background:var(--up)}.lean.dn{color:var(--dn)}.lean.dn i{background:var(--dn)}.lean.q i{display:none}
+.cbsum{margin-bottom:10px}.cbline{font-size:14.5px;margin:6px 0 2px}.cbnote{font-size:13.5px;margin:6px 0;color:#efe2d4}
+.reveal .mchip,.cc.reveal .bubble{animation:bubblein .6s ease both}
 </style>
 </head>
 <body>
@@ -169,6 +195,26 @@ tr.clk td:last-child{position:relative}
   <section class="card gk" id="gk1" aria-label="Grokky 1"></section>
   <section class="card gk" id="gk2" aria-label="Grokky 2"></section>
 </div>
+
+<section class="card" id="callersCard">
+  <h2>🧑‍🤝‍🧑 Meet the callers <span class="mut">· Zippy, Mellow and Ripple call UP or DOWN at minutes 4, 8 and 12 · paper only, no money, no orders</span></h2>
+  <div class="mut" style="font-size:13px;margin-bottom:10px">Every 15-minute window is split into 4-minute blocks. At each mark the three of us read what Grokky 1 and Grokky 2 are saying, add fresh price-action readings (VWAP, EMA, RSI, ATR, buyers vs sellers…), then call UP or DOWN and back one of the Grokkys. We see exactly the same information and think equally hard; we just weigh it in different styles. Scored on Kalshi’s real result.</div>
+  <div id="callersTl"></div>
+  <div id="callersBody" class="grid g3">
+    <section class="cc" id="caller-zippy" aria-label="Zippy"></section>
+    <section class="cc" id="caller-mellow" aria-label="Mellow"></section>
+    <section class="cc" id="caller-ripple" aria-label="Ripple"></section>
+  </div>
+  <h3 class="sub3">📊 Callers’ scoreboard <span class="mut">· overall and by minute mark</span></h3>
+  <div id="callersScore"></div>
+  <div class="mut tiny" style="font-size:12px;margin-top:6px">Later marks have less time left, so they’re naturally easier: the by-minute columns show that honestly. A mark only counts if the page was open for it, and nothing is back-filled.</div>
+</section>
+
+<section class="card" id="cbCard">
+  <h2>⚖️ Check &amp; balance <span class="mut">· do the Grokkys and callers agree with the readings, and with each other?</span></h2>
+  <div id="cbBody" class="mut">Loading…</div>
+</section>
+
 <section class="card" id="chartCard">
   <h2>📈 Bitcoin right now <span class="mut">· green candles are up moves, red are down moves · just for looking, no orders</span></h2>
   <div class="row" style="gap:8px;margin-bottom:8px" id="pcTabs"><button class="small tfb on" data-tf="1m">1m</button><button class="small tfb" data-tf="5m">5m</button><button class="small tfb" data-tf="15m">15m</button><span class="mut" style="font-size:12px;margin-left:6px" id="pcReadout"></span></div>
@@ -352,6 +398,8 @@ tr.clk td:last-child{position:relative}
 <script src="context.js"></script>
 <script src="charts.js"></script>
 <script src="grokky.js"></script>
+<script src="indicators.js"></script>
+<script src="callers.js"></script>
 <script>window.ASK_AI_URL='https://pulse-ask-ai.rydawg2026.workers.dev/ask'; /* the pulse-ask-ai Worker (Workers AI, capped 50 questions/day) — see tools/ask-ai-worker/DEPLOY.md. If it errors or hits its cap the page falls back to built-in answers. Set to '' to turn AI off. */</script>
 <script src="ask.js"></script>
 <script>
@@ -620,7 +668,7 @@ function tick(){
   var left=Math.max(0,Math.ceil((nextAt-Date.now())/1000)),m=Math.floor(left/60),s=left%60;
   $('countdown').textContent=(m<10?'0':'')+m+':'+(s<10?'0':'')+s;
   // keep open-window bits fresh without refetching
-  var cur=state.calls[winStart(nowS())];renderBetControls(cur,stats());if(window.GrokkyPanel)GrokkyPanel.update();
+  var cur=state.calls[winStart(nowS())];renderBetControls(cur,stats());if(window.GrokkyPanel)GrokkyPanel.update();if(window.CallersPanel)CallersPanel.update();
   if(!refreshing&&document.visibilityState==='visible'&&!cur&&Date.now()-lastRefresh*1000>60000&&lastRefresh)refresh();
 }
 document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible'&&lastRefresh&&winStart(nowS())>winStart(lastRefresh)){refresh();schedule()}});
@@ -636,9 +684,10 @@ $('tvBtn').onclick=function(){
   s.onerror=function(){box.textContent='TradingView could not be loaded.'};document.body.appendChild(s);this.disabled=true;
 };
 if(window.GrokkyPanel)GrokkyPanel.init({state:function(){return state},save:save});
+if(window.CallersPanel)CallersPanel.init({state:function(){return state},save:save});
 if(window.AskPanel)AskPanel.init();
 render();schedule();setInterval(tick,1000);tick();
-refresh().then(function(){window.__pulseReady=true;if(window.ContextPanel)window.ContextPanel.start();if(window.FlowTracker)window.FlowTracker.start();if(window.ChartPanel)window.ChartPanel.start()});
+refresh().then(function(){window.__pulseReady=true;if(window.ContextPanel)window.ContextPanel.start();if(window.FlowTracker)window.FlowTracker.start();if(window.PulseIndicators)window.PulseIndicators.start();if(window.ChartPanel)window.ChartPanel.start()});
 if(window.KalshiPanel)window.KalshiPanel.start();
 window.__pulse={save:save,rerender:function(){render()},state:function(){return state},sources:S,engine:function(){return runEngine()}};
 })();

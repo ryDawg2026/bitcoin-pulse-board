@@ -233,7 +233,7 @@ with sync_playwright() as p:
   a5=ask(pg,'tell me a joke');chk('unknown question admitted, not invented',"don’t have a built-in answer" in a5)
   chk('built-in mode made no call to any AI service',len(askreq)==0,str(askreq))
   sn=pg.evaluate("AskPanel.snapshot()");sj=json.dumps(sn)
-  okk={'asof','window','btc_consensus_usd','change_since_window_open_usd','kalshi_orderbook_imbalance','okx_funding_pct_per_8h','fear_greed','okx_liquidations_60m_usd','large_exchange_trades_15m_usd','high_impact_event_window','engine_v2','grokky_this_window','scoreboard','last_settled_round','chart_last_10min','typical_15min_move_usd','board_notes'}
+  okk={'callers','asof','window','btc_consensus_usd','change_since_window_open_usd','kalshi_orderbook_imbalance','okx_funding_pct_per_8h','fear_greed','okx_liquidations_60m_usd','large_exchange_trades_15m_usd','high_impact_event_window','engine_v2','grokky_this_window','scoreboard','last_settled_round','chart_last_10min','typical_15min_move_usd','board_notes'}
   chk('snapshot is compact and has only board-data keys (no play-money balance, bets or storage)',len(sj)<4500 and set(sn.keys())<=okk,str(len(sj))+' '+str(set(sn.keys())-okk))
   pg.locator('#askCard').scroll_into_view_if_needed();pg.locator('#askCard').screenshot(path=out+f'{tag}-ask-builtin.png')
   chk('worker unit tests (offline) pass',__import__('subprocess').run(['node','tools/ask-ai-worker/test.mjs'],capture_output=True,text=True).returncode==0)
@@ -334,6 +334,103 @@ with sync_playwright() as p:
   chk('tracker highlights each carry a "Why this one?" trail',pg.locator('#flowSum [data-xp^="hi"]').count()==2 and 'Why I surfaced this' in fs and '#1' in fs and 'dollar size' in fs,fs[:100])
   chk('tracker "What else I considered": looked-at / passed-over / duplicates-rejected / kept counts from the real counters',('What else I considered' in fs) and hl['tx']['below']>=8 and hl['tr']['dup']>=1 and pg.locator('#flowSum [data-xp="passed"] table.ftab tbody tr').count()==3,str(hl))
   chk('tracker says how many it shows vs how many it kept',('newest 2 of the 2 items') in fs,fs[-160:])
+  # ---- callers (Zippy / Mellow / Ripple), indicators, Grokky learning ----
+  SYN=r"""window.__syn=function(now,W,strike,g){const cb=[],bn=[];let p=70000;const t0=Math.floor(now/60)*60;
+ for(let t=t0-7200;t<=t0;t+=60){const o=p;p+=((t/60)%5<2?-9:7)+Math.sin(t/900)*6;cb.push({t:t,o:o,h:Math.max(o,p)+4,l:Math.min(o,p)-4,c:p,v:3+((t/60)%4)});bn.push({t:t,o:o-10,h:Math.max(o,p)+4,l:Math.min(o,p)-4,c:p-10,v:25,tb:15+((t/60)%3)})}
+ return {now:now,W:W,strike:strike,kmid:0.58,cb:cb,bn:bn,g:g===undefined?{g1:'UP',g2:'DOWN',pUp:.54,items:[{dir:'UP',src:'engine'},{dir:'DOWN',src:'ctx'},{dir:'UP',src:'ctx'}]}:g,ctx:{book:.06}}}"""
+  cX=b.new_context(viewport={'width':1280,'height':900});px=cX.new_page();ex=[];px.on('pageerror',lambda e:ex.append(str(e)[:200]));px.on('console',lambda m:ex.append(m.text[:160]) if m.type=='error' and 'Failed to load resource' not in m.text and 'CORS' not in m.text and 'Access to fetch' not in m.text else None)
+  px.goto(url);ready(px);px.wait_for_timeout(1500);px.evaluate(SYN)
+  tm=px.evaluate("""(()=>{CallersPanel._resetCache();localStorage.removeItem('pulseboard.callers.v1');const Wt=Math.floor(Date.now()/900000)*900-6*900,D=PulseIndicators.feed(),syn=__syn(Wt+1700,Wt,70040);D.cb=syn.cb;D.bn=syn.bn;
+    const S=()=>CallersPanel._store().rounds,ks=(W)=>Object.keys((S()[W]||{marks:{}}).marks),ms=(W)=>Object.keys((S()[W]||{miss:{}}).miss),o={};
+    CallersPanel.tickMarks(Wt+239);o.a=ks(Wt);CallersPanel.tickMarks(Wt+241);o.b=ks(Wt);CallersPanel.tickMarks(Wt+300);o.c=ks(Wt);
+    CallersPanel.tickMarks(Wt+600);o.d=ks(Wt);o.dm=ms(Wt);CallersPanel.tickMarks(Wt+725);o.e=ks(Wt);o.em=ms(Wt);
+    const W2=Wt+900;CallersPanel.tickMarks(W2+500);o.l=ks(W2);o.lm=ms(W2);
+    o.calls=Object.keys(S()[Wt].marks[4].calls);o.dirs=[4,12].map(m=>CallersPanel.IDS.map(i=>S()[Wt].marks[m].calls[i].dir));
+    localStorage.removeItem('pulseboard.callers.v1');CallersPanel._resetCache();return o})()""")
+  print('callers timing',tm)
+  chk('callers fire at minute 4, 8 and 12 only (no call 1 s before the mark; the mark fires inside its 90 s grace)',tm['a']==[] and tm['b']==['4'] and tm['c']==['4'],str(tm))
+  chk('a mark that was missed stays missed (never back-filled), and the next mark still fires',tm['d']==['4'] and tm['dm']==['8'] and tm['e']==['4','12'] and tm['em']==['8'],str(tm))
+  chk('opening the page late: earlier marks are recorded as missed, not invented',tm['l']==['8'] and tm['lm']==['4'],str((tm['l'],tm['lm'])))
+  chk('all three callers call at every mark',sorted(tm['calls'])==['mellow','ripple','zippy'])
+  eq=px.evaluate("""(()=>{const P=CallersPanel.PROFILES,sum=i=>Object.values(P[i].w).reduce((a,b)=>a+b,0),ids=CallersPanel.IDS,o={};
+    o.sums=ids.map(i=>+sum(i).toFixed(9));o.strike=ids.map(i=>P[i].w.strike);o.gk=ids.map(i=>P[i].w.grokky);o.keys=ids.map(i=>Object.keys(P[i].w).join());
+    const L=(t,r,f)=>({trend:{lean:t,n:2},revert:{lean:r,n:2},flow:{lean:f,n:2},strike:{lean:0,n:2},grokky:{lean:0,n:1}});
+    const a=ids.map(i=>CallersPanel.decide(L(1,-1,0),P[i],0).dir),b2=ids.map(i=>CallersPanel.decide(L(-1,1,0),P[i],0).dir),c=ids.map(i=>CallersPanel.decide(L(0,0,1),P[i],0).dir);
+    o.a=a;o.b=b2;o.c=c;const syn=__syn(Date.now()/1000|0,0,70040);o.cmp=ids.map(i=>JSON.stringify(Object.keys(CallersPanel.decide(CallersPanel._leans(PulseIndicators.compute(syn).signals),P[i],0)).sort()));return o})()""")
+  chk('equal capability: every caller has the same total weight budget (1.00), the same strike (0.30) and Grokky-evidence (0.10) weights, and the same five groups',set(eq['sums'])=={1.0} and set(eq['strike'])=={0.3} and set(eq['gk'])=={0.1} and len(set(eq['keys']))==1 and len(set(eq['cmp']))==1,str(eq))
+  chk('styles differ only by weighting: momentum follows the trend, mean-reversion fades it, order-flow follows flow (and flips with the evidence)',eq['a'][0]=='UP' and eq['a'][1]=='DOWN' and eq['b'][0]=='DOWN' and eq['b'][1]=='UP' and eq['c'][2]=='UP',str((eq['a'],eq['b'],eq['c'])))
+  sc=px.evaluate("""(()=>{CallersPanel._resetCache();localStorage.removeItem('pulseboard.callers.v1');const Wt=Math.floor(Date.now()/900000)*900-5*900,D=PulseIndicators.feed(),ks=[],orig=Storage.prototype.setItem,rm=Storage.prototype.removeItem,rmk=[];
+    const before=['pulseboard.v2','pulseboard.obook.v2','pulseboard.flows.v1','pulseboard.sig.v1','pulseboard.cleared.2026-11-12','pulseboard.learn.v1'].map(k=>localStorage.getItem(k)),tl0=JSON.stringify(GrokkyPanel.tally());
+    Storage.prototype.setItem=function(k,v){ks.push(k);return orig.call(this,k,v)};Storage.prototype.removeItem=function(k){rmk.push(k);return rm.call(this,k)};
+    const o={};try{
+    [[4,70010],[8,70030],[12,69990]].forEach(([m,strike])=>{const inp=__syn(Wt+m*60+5,Wt,strike);D.cb=inp.cb;D.bn=inp.bn;CallersPanel.fire(Wt,m,Wt+m*60+5,inp)});
+    const R=CallersPanel._store().rounds[Wt];o.calls={};CallersPanel.IDS.forEach(i=>o.calls[i]=[4,8,12].map(m=>R.marks[m].calls[i].dir));
+    const s0=JSON.stringify(CallersPanel._store().tot);
+    const n1=CallersPanel.onKalshi({settled:[{result:'yes',close_time:new Date((Wt+900)*1000).toISOString(),expiration_value:'70100',floor_strike:70000}]});
+    const T=CallersPanel._store().tot;o.n1=n1;o.tot=T;const n2=CallersPanel.onKalshi({settled:[{result:'yes',close_time:new Date((Wt+900)*1000).toISOString()}]});o.n2=n2;o.same=JSON.stringify(CallersPanel._store().tot)===JSON.stringify(T);
+    o.sig=Object.keys(CallersPanel._store().sig).length;
+    }finally{Storage.prototype.setItem=orig;Storage.prototype.removeItem=rm}
+    o.keys=[...new Set(ks)];o.rm=rmk;o.untouched=['pulseboard.v2','pulseboard.obook.v2','pulseboard.flows.v1','pulseboard.sig.v1','pulseboard.cleared.2026-11-12','pulseboard.learn.v1'].map(k=>localStorage.getItem(k))
+      .every((v,i)=>v===before[i]);o.tally=JSON.stringify(GrokkyPanel.tally())===tl0;
+    localStorage.removeItem('pulseboard.callers.v1');CallersPanel._resetCache();return o})()""")
+  print('callers scoring',{k:v for k,v in sc.items() if k not in ('tot',)})
+  exp={i:[d=='UP' for d in sc['calls'][i]] for i in sc['calls']}
+  okm=all(sc['tot'][i]['m%d'%m]['n']==1 and sc['tot'][i]['m%d'%m]['w']==(1 if exp[i][j] else 0) for i in exp for j,m in enumerate([4,8,12]))
+  chk('callers are scored on Kalshi settlement, overall and by minute mark (4 / 8 / 12), and backing counts add up',okm and all(sc['tot'][i]['a']['n']==3 and sc['tot'][i]['a']['w']==sum(exp[i]) and sc['tot'][i]['b1']['n']+sc['tot'][i]['b2']['n']==3 for i in exp),str(sc['tot']))
+  chk('re-settling the same round does not double count',sc['n1']==1 and sc['n2']==0 and sc['same'])
+  chk('indicator hit-rates are kept per reading and mark',sc['sig']>3)
+  chk('storage isolation: callers only ever write pulseboard.callers.v1 (and never remove another key)',sc['keys']==['pulseboard.callers.v1'] and sc['rm']==[],str((sc['keys'],sc['rm'])))
+  chk('existing scores and keys untouched by callers (pulseboard.v2 / obook / flows / sig / learn / migration flag identical; Grokky tally identical)',sc['untouched'] and sc['tally'])
+  ind=px.evaluate("""(()=>{const n=Date.now()/1000|0,W=Math.floor(n/900)*900,syn=__syn(n,W,70040),v=PulseIndicators.compute(syn),o={};o.ok=v.ok;o.keys=v.signals.map(s=>s.k);o.na=v.signals.filter(s=>s.na).map(s=>s.k);
+    const st=v.signals.find(s=>s.k=='strike');o.strike=st.desc;o.d=v.d;o.votes=Object.fromEntries(v.signals.map(s=>[s.k,s.vote]));o.allDesc=v.signals.every(s=>typeof s.desc=='string'&&s.desc.length>8);
+    const up=[];let p=70000;for(let t=n-7200;t<=n;t+=60){up.push({t:t,o:p,h:p+9,l:p-1,c:p+8,v:2});p+=8}
+    const v2=PulseIndicators.compute({now:n,W:W,strike:70040,kmid:NaN,cb:up,bn:[],g:null,ctx:null});o.rsi=v2.signals.find(s=>s.k=='rsi').desc;o.ema=v2.signals.find(s=>s.k=='ema').vote;o.cvdna=v2.signals.find(s=>s.k=='cvd');
+    const v3=PulseIndicators.compute({now:n,W:W,strike:70040,kmid:NaN,cb:[],bn:[],g:null,ctx:null});o.why=v3.why;o.ok3=v3.ok;o.phi=[PulseIndicators._phi(0),PulseIndicators._phi(1.96)];return o})()""")
+  print('indicators',ind['keys'],ind['na'])
+  need={'strike','crowd','ema','mom','vwap','drift','rsi','stretch','cvd','prem','book','gkread','gkconf','vol','implied'}
+  chk('indicators: VWAP, EMA cross, RSI, ATR/volatility, distance-to-strike in ATR units, realized vs implied move, CVD, Coinbase-vs-Binance premium and momentum are all produced',need<=set(ind['keys']) and ind['ok'] and ind['allDesc'],str(set(ind['keys'])^need))
+  chk('indicator text quotes the real live numbers (strike distance, ATRs)','ATRs' in ind['strike'] and ('$%d'%round(abs(ind['d'])) in ind['strike'].replace(',','')) and ('above' in ind['strike'] or 'below' in ind['strike']),ind['strike'][:120])
+  chk('rising candles: RSI reads overbought and the EMA cross votes UP; no taker volume → CVD says not available (never invented)','overbought' in ind['rsi'] and ind['ema']>0 and ind['cvdna']['na'] and len(ind['cvdna']['desc'])>10,ind['rsi'])
+  chk('no candles → says why and returns no readings',ind['ok3'] is False and len(ind['why'])>10 and abs(ind['phi'][0]-0.5)<1e-6 and abs(ind['phi'][1]-0.975)<2e-3,str(ind['why']))
+  # Grokky learning
+  cL=b.new_context(viewport={'width':1280,'height':900});pl=cL.new_page();pl.goto(url);ready(pl);pl.evaluate(SYN)
+  lr=pl.evaluate("""(()=>{const s=window.__pulse.state(),W0=Math.floor(Date.now()/900000)*900,ks=[],orig=Storage.prototype.setItem,o={};localStorage.removeItem('pulseboard.learn.v1');GrokkyPanel._resetLearnCache();
+    const seed=(a,b2)=>{for(let i=a;i<b2;i++){const W=W0-(200-i)*900;s.groks[W]={W:W,g1:'DOWN',g2:'UP',conf:55,lockedAt:W+3,late:false,why:{items:[{src:'engine',k:'z4',dir:'UP',m:.1,txt:'1-hour overshoot fade — x'},{src:'engine',k:'rsi',dir:'DOWN',m:.1,txt:'RSI(14) mean-reversion — y'},{src:'ctx',dir:'UP',m:1,txt:'BRTI settlement average is $5 above the strike'}],g1:{lines:[],n:0,against:0},g2:{lines:[],n:0,against:0},forced2:false,passed:[],neutral:[]},kres:'yes',winner:2}}};
+    Storage.prototype.setItem=function(k,v){ks.push(k);return orig.call(this,k,v)};
+    try{seed(0,10);o.n10=GrokkyPanel.learnAll();o.m10=[GrokkyPanel._mult('z4'),GrokkyPanel._mult('rsi')];seed(10,25);o.n25=GrokkyPanel.learnAll();o.m25=[GrokkyPanel._mult('z4'),GrokkyPanel._mult('rsi'),GrokkyPanel._mult('gap')];o.again=GrokkyPanel.learnAll();
+    o.leg=GrokkyPanel._keyOf({txt:'BRTI settlement average is $5 above the strike'});
+    const call={dir:'DOWN',conf:51,score:-0.0019,signals:[{k:'z4',w:.184,vote:.05},{k:'rsi',w:.139,vote:-.08}]};
+    const Wa=W0-80*900,Wb=W0-81*900;GrokkyPanel.lock(Wa,call);o.flip=s.groks[Wa];
+    localStorage.removeItem('pulseboard.learn.v1');GrokkyPanel._resetLearnCache();GrokkyPanel.lock(Wb,call);o.nolearn=s.groks[Wb];
+    }finally{Storage.prototype.setItem=orig}
+    o.keys=[...new Set(ks)].filter(k=>k!=='pulseboard.v2');return o})()""")
+  print('learning',{k:lr[k] for k in ('n10','m10','n25','m25','again','leg','keys')})
+  chk('learning: credits settled rounds once, writes only its own key (pulseboard.learn.v1)',lr['n10']==10 and lr['n25']==15 and lr['again']==0 and lr['keys']==['pulseboard.learn.v1'],str(lr['keys']))
+  chk('learning is gradual and bounded: no change before 20 rounds, then a reading that kept being right is trusted up to 1.3x and one that kept being wrong down to 0.7x',lr['m10']==[1,1] and lr['m25'][0]==1.3 and lr['m25'][1]==0.7 and lr['m25'][2]==1.3 and lr['leg']=='gap',str((lr['m10'],lr['m25'])))
+  chk('learned weights can change Grokky 1 (and say so); Grokky 2 is still exactly opposite',lr['flip']['g1']=='UP' and lr['flip']['g2']=='DOWN' and lr['flip']['learn']['flipped'] and lr['flip']['learn']['raw']=='DOWN',str(lr['flip']['learn']))
+  chk('without learning, Grokky 1 = the engine direction and Grokky 2 the opposite',lr['nolearn']['g1']=='DOWN' and lr['nolearn']['g2']=='UP' and not lr['nolearn']['learn']['flipped'])
+  pl.evaluate("GrokkyPanel.update(true)")
+  cL.close()
+  # callers UI on the page: seed a call for the current window and read what a person would see
+  ui=px.evaluate("""(()=>{CallersPanel._resetCache();localStorage.removeItem('pulseboard.callers.v1');const n=Date.now()/1000|0,W=Math.floor(n/900)*900,D=PulseIndicators.feed();
+    const inp=__syn(n,W,70040);D.cb=inp.cb;D.bn=inp.bn;[4,8].forEach(m=>CallersPanel.fire(W,m,n,inp));CallersPanel.update(true);const mk=CallersPanel._store().rounds[W].marks[8];return {d:mk.d,calls:mk.calls}})()""")
+  px.wait_for_timeout(1500)
+  zt=px.locator('#caller-zippy').text_content()
+  chk('caller card speaks in first person, names the mark and who it backs, and quotes the real distance to strike','I’m calling' in zt and 'backing Grokky' in zt and ('$%d'%round(abs(ui['d'])) in zt.replace(',','')) and 'At the' not in zt,zt[:200])
+  chk('callers cards: no third-person narration',not re.search(r'\b(Zippy|Mellow|Ripple) (is|was|thinks|says|picked|called)\b|\bthey\b',px.locator('#callersBody').text_content()))
+  px.locator('#caller-mellow [data-xp="cwmellow"] .xpb').click();px.locator('#caller-mellow [data-xp="camellow"] .xpb').click();px.wait_for_timeout(700)
+  mt=px.locator('#caller-mellow').text_content()
+  chk('call has a written "Why?" (group weights, total, rough chance) and a "What else I considered" (against, alternatives, others, not-readable)',all(x in mt for x in ['How I weigh','I’m','Total','What else I considered','Pointing the other way','If I’d done it differently','What the others called']) or all(x in mt for x in ['evidence added up','What else I considered','Pointing the other way','If I’d done it differently','What the others called']),mt[-300:])
+  chk('timeline shows the three marks and the cards show a mark chip per mark',px.locator('#callersTl .mtl-dot').count()==3 and px.locator('#caller-zippy .mchip').count()==3)
+  chk('callers scoreboard lists the three callers plus Grokky 1/2 for comparison',px.locator('#callersScore tbody tr').count()==5 and 'Minute 12' in px.locator('#callersScore').text_content())
+  px.locator('#cbBody [data-xp="cbgrid"] .xpb').click();px.wait_for_timeout(700)
+  chk('check & balance: agreement meter + reading-by-reading grid with Grokky 1, Grokky 2 and all three callers',px.locator('#cbBody .cbtab thead th').count()==8 and px.locator('#cbBody .cbtab tbody tr').count()>=8 and 'of us say' in px.locator('#cbBody').text_content(),px.locator('#cbBody').text_content()[:120])
+  sn2=px.evaluate("AskPanel.snapshot()");chk('Ask AI snapshot carries a compact callers summary',('callers' in sn2) and len(json.dumps(sn2))<4500,str(len(json.dumps(sn2))))
+  ba=px.evaluate("AskPanel.builtin('What are the callers saying?')");chk('built-in answer covers the callers',('Zippy' in ba and 'Mellow' in ba and 'Ripple' in ba),ba[:100])
+  px.evaluate("document.querySelectorAll('.xp').forEach(x=>x.classList.add('open'))");px.wait_for_timeout(600)
+  chk('callers section: no page errors or console errors',not ex,str(ex))
+  px.locator('#callersCard').screenshot(path=out+f'{tag}-callers-card.png')
+  px.evaluate("localStorage.removeItem('pulseboard.callers.v1');CallersPanel._resetCache()");cX.close()
   # reduced motion respected
   rc=b.new_context(viewport={'width':1280,'height':900},reduced_motion='reduce');rp=rc.new_page();rp.goto(url);ready(rp);rp.wait_for_timeout(1500)
   rm=rp.evaluate("""(()=>{const c=getComputedStyle(document.getElementById('gk1')),x=document.querySelector('.xp'),y=x?getComputedStyle(x):null;return {red:UI.reduced(),an:c.animationName,tr:y?y.transitionDuration:'0s',bar:[...document.querySelectorAll('.sbar i')].every(i=>i.style.width===i.getAttribute('data-w')+'%'),bal:document.getElementById('bal').textContent}})()""")
@@ -341,6 +438,7 @@ with sync_playwright() as p:
   rc.close()
   # mobile with every trail expanded
   m0=b.new_context(viewport={'width':390,'height':844},is_mobile=True,has_touch=True);m0p=m0.new_page();m0p.goto(url);ready(m0p);m0p.wait_for_timeout(1500)
+  m0p.evaluate("window.__syn=function(now,W,strike,g){const cb=[],bn=[];let p=70000;const t0=Math.floor(now/60)*60;\n for(let t=t0-7200;t<=t0;t+=60){const o=p;p+=((t/60)%5<2?-9:7)+Math.sin(t/900)*6;cb.push({t:t,o:o,h:Math.max(o,p)+4,l:Math.min(o,p)-4,c:p,v:3+((t/60)%4)});bn.push({t:t,o:o-10,h:Math.max(o,p)+4,l:Math.min(o,p)-4,c:p-10,v:25,tb:15+((t/60)%3)})}\n return {now:now,W:W,strike:strike,kmid:0.58,cb:cb,bn:bn,g:g===undefined?{g1:'UP',g2:'DOWN',pUp:.54,items:[{dir:'UP',src:'engine'},{dir:'DOWN',src:'ctx'},{dir:'UP',src:'ctx'}]}:g,ctx:{book:.06}}}");m0p.evaluate("(()=>{const n=Date.now()/1000|0,W=Math.floor(n/900)*900,D=PulseIndicators.feed(),inp=__syn(n,W,70040);D.cb=inp.cb;D.bn=inp.bn;CallersPanel.fire(W,4,n,inp);CallersPanel.update(true)})()");m0p.wait_for_timeout(800)
   m0p.evaluate("document.querySelectorAll('.xp').forEach(x=>x.classList.add('open'))");m0p.wait_for_timeout(600)
   chk('mobile: no horizontal overflow even with every "Why?" section open',m0p.evaluate("document.documentElement.scrollWidth")<=392,str(m0p.evaluate("document.documentElement.scrollWidth")))
   m0.close()

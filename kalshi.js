@@ -84,7 +84,7 @@ function fail(e){
   $('kalshiBody').innerHTML='<div class="mut" style="font-size:13px">Kalshi market data could not be loaded ('+esc(e.message)+'). Kalshi’s public API does not send CORS headers for github.io, so a static page cannot call it directly; see tools/kalshi-proxy-worker.js (free Cloudflare Worker) or tools/kalshi_snapshot.py. Nothing else on the board is affected.</div>';
 }
 function ctxNow(){var g=window.__pulseNow||{};return {price:g.med,call:g.call,calls:g.calls}}
-function refresh(){return load().then(function(d){last=d;render(d,ctxNow());if(window.ContextPanel&&ContextPanel.onKalshi)ContextPanel.onKalshi(d);if(window.GrokkyPanel&&GrokkyPanel.onKalshi)GrokkyPanel.onKalshi(d)},fail)}
+function refresh(){return load().then(function(d){last=d;render(d,ctxNow());if(window.ContextPanel&&ContextPanel.onKalshi)ContextPanel.onKalshi(d);if(window.GrokkyPanel&&GrokkyPanel.onKalshi)GrokkyPanel.onKalshi(d);if(window.CallersPanel&&CallersPanel.onKalshi)CallersPanel.onKalshi(d)},fail)}
 function tickClock(){var el=$('kClock');if(el){var s=+el.getAttribute('data-close')-Date.now()/1000;el.textContent=mmss(s);if(s<-3&&document.visibilityState==='visible'&&(!last||Date.now()-(last._at||0)>8000)){last&&(last._at=Date.now());refresh()}}}
 window.KalshiPanel={start:function(){if(!$('kalshiBody'))return;refresh().then(function(){window.__kalshiReady=true},function(){window.__kalshiReady=true});clearInterval(timer);timer=setInterval(function(){if(document.visibilityState==='visible')refresh()},20000);setInterval(tickClock,1000)},base:function(){return BASE||API},viaSnapshot:function(){return last&&last._via==='snapshot'},last:function(){return last},rerender:function(){if(last)render(last,ctxNow())}};
 })();

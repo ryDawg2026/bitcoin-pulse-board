@@ -36,6 +36,7 @@ function countAll(root){
 function cu(key,val,opts){opts=opts||{};return '<b class="cu" data-k="'+key+'" data-v="'+val+'"'+(opts.d?' data-d="'+opts.d+'"':'')+(opts.pre?' data-pre="'+opts.pre+'"':'')+(opts.suf?' data-suf="'+opts.suf+'"':'')+'>'+((opts.pre||'')+(opts.d?(+val).toFixed(opts.d):val)+(opts.suf||''))+'</b>'}
 /* bars: <i data-w="63"> — grows from the previously shown width */
 function bar(key,pct){var from=LAST['bar:'+key]!=null?LAST['bar:'+key]:0;LAST['bar:'+key]=pct;return '<div class="sbar s'+key.slice(-1)+'"><i data-k="'+key+'" data-w="'+pct+'" style="width:'+(reduced()?pct:from)+'%"></i></div>'}
+function barc(key,pct,cls){var from=LAST['bar:'+key]!=null?LAST['bar:'+key]:0;LAST['bar:'+key]=pct;return '<div class="sbar '+cls+'"><i data-k="'+key+'" data-w="'+pct+'" style="width:'+(reduced()?pct:from)+'%"></i></div>'}
 function settleBars(root){
   var els=[].slice.call((root||document).querySelectorAll('.sbar i[data-w]'));if(!els.length)return;
   if(reduced()){els.forEach(function(i){i.style.width=i.getAttribute('data-w')+'%'});return}
@@ -43,6 +44,6 @@ function settleBars(root){
 }
 /* staggered rise-in for the page's cards */
 function stagger(){[].forEach.call(document.querySelectorAll('.wrap .card'),function(c,i){c.style.setProperty('--i',Math.min(i,8))})}
-window.UI={xp:xp,restore:restore,cu:cu,countAll:countAll,bar:bar,settleBars:settleBars,reduced:reduced,stagger:stagger,_open:OPEN};
+window.UI={xp:xp,restore:restore,cu:cu,countAll:countAll,bar:bar,barc:barc,settleBars:settleBars,reduced:reduced,stagger:stagger,_open:OPEN};
 if(document.readyState!=='loading')stagger();else document.addEventListener('DOMContentLoaded',stagger);
 })();
