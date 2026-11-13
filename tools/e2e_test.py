@@ -334,63 +334,211 @@ with sync_playwright() as p:
   chk('tracker highlights each carry a "Why this one?" trail',pg.locator('#flowSum [data-xp^="hi"]').count()==2 and 'Why I surfaced this' in fs and '#1' in fs and 'dollar size' in fs,fs[:100])
   chk('tracker "What else I considered": looked-at / passed-over / duplicates-rejected / kept counts from the real counters',('What else I considered' in fs) and hl['tx']['below']>=8 and hl['tr']['dup']>=1 and pg.locator('#flowSum [data-xp="passed"] table.ftab tbody tr').count()==3,str(hl))
   chk('tracker says how many it shows vs how many it kept',('newest 2 of the 2 items') in fs,fs[-160:])
-  # ---- callers (Zippy / Mellow / Ripple), indicators, Grokky learning ----
+  # ---- callers v2 (Dash / Zippy / Mellow / Ripple / Sage), indicators, gate, memory, phases, archive, Grokky learning ----
   SYN=r"""window.__syn=function(now,W,strike,g){const cb=[],bn=[];let p=70000;const t0=Math.floor(now/60)*60;
  for(let t=t0-7200;t<=t0;t+=60){const o=p;p+=((t/60)%5<2?-9:7)+Math.sin(t/900)*6;cb.push({t:t,o:o,h:Math.max(o,p)+4,l:Math.min(o,p)-4,c:p,v:3+((t/60)%4)});bn.push({t:t,o:o-10,h:Math.max(o,p)+4,l:Math.min(o,p)-4,c:p-10,v:25,tb:15+((t/60)%3)})}
- return {now:now,W:W,strike:strike,kmid:0.58,cb:cb,bn:bn,g:g===undefined?{g1:'UP',g2:'DOWN',pUp:.54,items:[{dir:'UP',src:'engine'},{dir:'DOWN',src:'ctx'},{dir:'UP',src:'ctx'}]}:g,ctx:{book:.06}}}"""
+ return {now:now,W:W,strike:strike,kmid:0.58,cb:cb,bn:bn,g:g===undefined?{g1:'UP',g2:'DOWN',pUp:.54,items:[{dir:'UP',src:'engine'},{dir:'DOWN',src:'ctx'},{dir:'UP',src:'ctx'}]}:g,ctx:{book:.06}}};
+ window.__reset=function(){CallersPanel._resetCache();localStorage.removeItem('pulseboard.callers.v2');localStorage.removeItem('pulseboard.archive.v1');GrokkyArchive._reload()};
+ window.__kinds=['pulseboard.v2','pulseboard.obook.v2','pulseboard.flows.v1','pulseboard.sig.v1','pulseboard.cleared.2026-11-12','pulseboard.learn.v1','pulseboard.callers.v1'];"""
   cX=b.new_context(viewport={'width':1280,'height':900});px=cX.new_page();ex=[];px.on('pageerror',lambda e:ex.append(str(e)[:200]));px.on('console',lambda m:ex.append(m.text[:160]) if m.type=='error' and 'Failed to load resource' not in m.text and 'CORS' not in m.text and 'Access to fetch' not in m.text else None)
   px.goto(url);ready(px);px.wait_for_timeout(1500);px.evaluate(SYN)
-  tm=px.evaluate("""(()=>{CallersPanel._resetCache();localStorage.removeItem('pulseboard.callers.v1');const Wt=Math.floor(Date.now()/900000)*900-6*900,D=PulseIndicators.feed(),syn=__syn(Wt+1700,Wt,70040);D.cb=syn.cb;D.bn=syn.bn;
-    const S=()=>CallersPanel._store().rounds,ks=(W)=>Object.keys((S()[W]||{marks:{}}).marks),ms=(W)=>Object.keys((S()[W]||{miss:{}}).miss),o={};
-    CallersPanel.tickMarks(Wt+239);o.a=ks(Wt);CallersPanel.tickMarks(Wt+241);o.b=ks(Wt);CallersPanel.tickMarks(Wt+300);o.c=ks(Wt);
-    CallersPanel.tickMarks(Wt+600);o.d=ks(Wt);o.dm=ms(Wt);CallersPanel.tickMarks(Wt+725);o.e=ks(Wt);o.em=ms(Wt);
-    const W2=Wt+900;CallersPanel.tickMarks(W2+500);o.l=ks(W2);o.lm=ms(W2);
-    o.calls=Object.keys(S()[Wt].marks[4].calls);o.dirs=[4,12].map(m=>CallersPanel.IDS.map(i=>S()[Wt].marks[m].calls[i].dir));
-    localStorage.removeItem('pulseboard.callers.v1');CallersPanel._resetCache();return o})()""")
-  print('callers timing',tm)
-  chk('callers fire at minute 4, 8 and 12 only (no call 1 s before the mark; the mark fires inside its 90 s grace)',tm['a']==[] and tm['b']==['4'] and tm['c']==['4'],str(tm))
-  chk('a mark that was missed stays missed (never back-filled), and the next mark still fires',tm['d']==['4'] and tm['dm']==['8'] and tm['e']==['4','12'] and tm['em']==['8'],str(tm))
-  chk('opening the page late: earlier marks are recorded as missed, not invented',tm['l']==['8'] and tm['lm']==['4'],str((tm['l'],tm['lm'])))
-  chk('all three callers call at every mark',sorted(tm['calls'])==['mellow','ripple','zippy'])
-  eq=px.evaluate("""(()=>{const P=CallersPanel.PROFILES,sum=i=>Object.values(P[i].w).reduce((a,b)=>a+b,0),ids=CallersPanel.IDS,o={};
-    o.sums=ids.map(i=>+sum(i).toFixed(9));o.strike=ids.map(i=>P[i].w.strike);o.gk=ids.map(i=>P[i].w.grokky);o.keys=ids.map(i=>Object.keys(P[i].w).join());
-    const L=(t,r,f)=>({trend:{lean:t,n:2},revert:{lean:r,n:2},flow:{lean:f,n:2},strike:{lean:0,n:2},grokky:{lean:0,n:1}});
-    const a=ids.map(i=>CallersPanel.decide(L(1,-1,0),P[i],0).dir),b2=ids.map(i=>CallersPanel.decide(L(-1,1,0),P[i],0).dir),c=ids.map(i=>CallersPanel.decide(L(0,0,1),P[i],0).dir);
-    o.a=a;o.b=b2;o.c=c;const syn=__syn(Date.now()/1000|0,0,70040);o.cmp=ids.map(i=>JSON.stringify(Object.keys(CallersPanel.decide(CallersPanel._leans(PulseIndicators.compute(syn).signals),P[i],0)).sort()));return o})()""")
-  chk('equal capability: every caller has the same total weight budget (1.00), the same strike (0.30) and Grokky-evidence (0.10) weights, and the same five groups',set(eq['sums'])=={1.0} and set(eq['strike'])=={0.3} and set(eq['gk'])=={0.1} and len(set(eq['keys']))==1 and len(set(eq['cmp']))==1,str(eq))
-  chk('styles differ only by weighting: momentum follows the trend, mean-reversion fades it, order-flow follows flow (and flips with the evidence)',eq['a'][0]=='UP' and eq['a'][1]=='DOWN' and eq['b'][0]=='DOWN' and eq['b'][1]=='UP' and eq['c'][2]=='UP',str((eq['a'],eq['b'],eq['c'])))
-  sc=px.evaluate("""(()=>{CallersPanel._resetCache();localStorage.removeItem('pulseboard.callers.v1');const Wt=Math.floor(Date.now()/900000)*900-5*900,D=PulseIndicators.feed(),ks=[],orig=Storage.prototype.setItem,rm=Storage.prototype.removeItem,rmk=[];
-    const before=['pulseboard.v2','pulseboard.obook.v2','pulseboard.flows.v1','pulseboard.sig.v1','pulseboard.cleared.2026-11-12','pulseboard.learn.v1'].map(k=>localStorage.getItem(k)),tl0=JSON.stringify(GrokkyPanel.tally());
-    Storage.prototype.setItem=function(k,v){ks.push(k);return orig.call(this,k,v)};Storage.prototype.removeItem=function(k){rmk.push(k);return rm.call(this,k)};
+  # 1) beats
+  tm=px.evaluate("""(()=>{__reset();const B=CallersPanel.BEATS,ids=CallersPanel.IDS,all=[].concat(...ids.map(i=>B[i])),o={};
+    o.all=all.slice().sort((a,b)=>a-b);o.uniq=new Set(all).size;o.fit=ids.every(i=>B[i].every(s=>s+CallersPanel.grace(s)<900));o.sage=B.sage;o.g870=CallersPanel.grace(870);o.table=Object.fromEntries(ids.map(i=>[i,B[i]]));
+    const Wt=Math.floor(Date.now()/900000)*900-6*900,D=PulseIndicators.feed(),syn=__syn(Wt+4*900,Wt,70040);D.cb=syn.cb;D.bn=syn.bn;
+    const S=()=>CallersPanel._store().rounds,F=(W)=>{const r=S()[W];return r?ids.map(i=>r.calls[i].map((c,k)=>c?k:'-').join('')).join('|'):''},M=(W)=>{const r=S()[W];return r?Object.fromEntries(Object.entries(r.miss).map(([k,v])=>[k,Object.keys(v).join('')])):{}};
+    CallersPanel.tickMarks(Wt+59);o.a=F(Wt);CallersPanel.tickMarks(Wt+61);o.b=F(Wt);CallersPanel.tickMarks(Wt+125);o.c=F(Wt);
+    CallersPanel.tickMarks(Wt+400);o.d=F(Wt);o.dm=M(Wt);CallersPanel.tickMarks(Wt+871);o.e=F(Wt);o.em=M(Wt);
+    const W2=Wt+900;CallersPanel.tickMarks(W2+500);o.l=F(W2);o.lm=M(W2);
+    const W3=Wt+1800;CallersPanel.tickMarks(W3+896);o.late=F(W3);o.latem=M(W3);
+    return o})()""")
+  print('callers beats',tm['table'],tm['a'],tm['b'],tm['c'],tm['d'],tm['e'])
+  chk('six callers, sixteen unique beats (no collisions); Flippy has ONE beat at 14:15 (855 s) in a slot nobody else uses',tm['uniq']==16 and tm['all']==sorted(tm['all']) and tm['table']=={'dash':[60,360,660],'zippy':[120,420,720],'mellow':[180,480,780],'ripple':[240,540,840],'sage':[300,600,870],'flippy':[855]},str(tm['table']))
+  chk('Sage’s last call is at 14:30 (870 s, minute 15 is settlement) and every beat plus its grace ends before the window closes',tm['sage'][2]==870 and tm['g870']==25 and tm['fit'],str((tm['sage'],tm['g870'])))
+  chk('nothing fires one second early; each beat fires inside its grace; only the caller whose beat it is calls',tm['a'] in ('','---|---|---|---|---|-') and tm['b']=='0--|---|---|---|---|-' and tm['c']=='0--|0--|---|---|---|-',str((tm['a'],tm['b'],tm['c'])))
+  chk('a late page records the beats it missed as missed (never back-filled) and still fires the ones in range',tm['d']=='01-|0--|---|---|---|-' and tm['dm']=={'mellow':'0','ripple':'0','sage':'0'} and tm['e']=='01-|0--|---|--2|--2|0',str((tm['d'],tm['dm'],tm['e'])))
+  chk('opening the page mid-window: earlier beats missed, Mellow’s minute-8 beat still fires inside its grace',tm['l']=='---|---|-1-|---|---|-' and tm['lm']=={'dash':'01','zippy':'01','mellow':'0','ripple':'0','sage':'0'},str((tm['l'],tm['lm'])))
+  chk('Sage’s 14:30 call (and Flippy’s 14:15 look) are missed, not forced, once their short grace is over',('2' in tm['latem'].get('sage','')) and tm['late'].endswith('---|-') and tm['latem'].get('flippy')=='0',str((tm['late'],tm['latem'])))
+  # 2) equal capability
+  eq=px.evaluate("""(()=>{__reset();const P=CallersPanel.PROFILES,ids=CallersPanel.REG,sum=i=>Object.values(P[i].w).reduce((a,b)=>a+b,0),o={};
+    o.sums=ids.map(i=>+sum(i).toFixed(9));o.keys=ids.map(i=>Object.keys(P[i].w).join());o.groups=PulseIndicators.GROUPS.join();
+    const L=(m,v,c,r,f,s,g)=>({momentum:{lean:m,n:2},volume:{lean:v,n:2},chart:{lean:c,n:2},revert:{lean:r,n:2},flow:{lean:f,n:2},strike:{lean:s,n:2},grokky:{lean:g,n:1}});
+    const dd=l=>ids.map(i=>CallersPanel.decide(l,P[i],0).dir);
+    o.mom=dd(L(1,-.3,-.3,0,0,0,0));o.vol=dd(L(-.3,1,-.3,0,0,0,0));o.chart=dd(L(-.3,-.3,1,0,0,0,0));o.sage=dd(L(-1,-1,-1,0,0,1,0));o.dash=dd(L(.6,.6,0,0,0,-1,0));
+    const inp=__syn(Date.now()/1000|0,0,70040),W=Math.floor(Date.now()/900000)*900-9*900,D=PulseIndicators.feed();D.cb=inp.cb;D.bn=inp.bn;
+    ids.forEach((i,k)=>CallersPanel.fire(W,i,0,W+100+k,inp));const R=CallersPanel._store().rounds[W];
+    o.leans=ids.map(i=>JSON.stringify(R.calls[i][0].leans));o.flw=Object.values(P.flippy.w).reduce((a,b)=>a+b,0);o.flk=Object.keys(P.flippy.w).length;o.fields=ids.map(i=>Object.keys(R.calls[i][0]).sort().join());o.cnt=ids.map(i=>JSON.stringify(R.calls[i][0].cnt));return o})()""")
+  chk('equal capability: each caller has the same 1.00 weight budget over the same seven evidence groups; same record fields and reading counts for the same input',set(eq['sums'])=={1.0} and len(set(eq['keys']))==1 and set(eq['keys'][0].split(','))==set(eq['groups'].split(',')) and len(set(eq['leans']))==1 and len(set(eq['fields']))==1 and len(set(eq['cnt']))==1,str(eq))
+  chk('Flippy reads the same shared vector with his own seven flip-evidence weights summing to 1.00',abs(eq['flw']-1)<1e-9 and eq['flk']==7)
+  chk('emphasis differs: momentum → Zippy up only; volume → Mellow up only; chart → Ripple up only; Sage needs the strike gap to confirm; Dash acts on early momentum+volume',(eq['mom'][1]=='UP' and eq['mom'][2]=='DOWN' and eq['mom'][3]=='DOWN' and eq['vol'][2]=='UP' and eq['vol'][1]=='DOWN' and eq['chart'][3]=='UP' and eq['chart'][1]=='DOWN' and eq['sage'][4]=='UP' and eq['sage'][1]=='DOWN' and eq['dash'][0]=='UP' and eq['dash'][1]=='DOWN'),str((eq['mom'],eq['vol'],eq['chart'],eq['sage'],eq['dash'])))
+  # 3) confidence
+  cf=px.evaluate("""(()=>{__reset();const P=CallersPanel.PROFILES,o={},L=(m,s)=>({momentum:{lean:m,n:2},volume:{lean:m,n:2},chart:{lean:m,n:2},revert:{lean:m,n:2},flow:{lean:m,n:2},strike:{lean:s,n:2},grokky:{lean:m,n:1}});
+    const c=(id,l,g,cr)=>{const d=CallersPanel.decide(l,P[id],0);return CallersPanel.confidence(d,l,P[id],g||'ok',cr||{same:0,tot:0})};
+    o.weak=c('zippy',L(.05,.05)).conf;o.strong=c('zippy',L(.6,.6)).conf;o.caut=c('zippy',L(.6,.6),'caution').conf;o.dash=c('dash',L(.4,.4)).conf;o.zip=c('zippy',L(.4,.4)).conf;o.sage=c('sage',L(.4,.4)).conf;
+    o.crowdUp=c('zippy',L(.3,.3),'ok',{same:3,tot:3}).conf;o.crowdDn=c('zippy',L(.3,.3),'ok',{same:0,tot:3}).conf;o.parts=c('zippy',L(.6,.6)).parts;
+    const Wt=Math.floor(Date.now()/900000)*900-8*900,D=PulseIndicators.feed(),inp=__syn(Wt+400,Wt,70010);D.cb=inp.cb;D.bn=inp.bn;CallersPanel.fire(Wt,'ripple',0,Wt+250,inp);const call=CallersPanel._store().rounds[Wt].calls.ripple[0];
+    const p=call.cp,re=Math.max(5,Math.min(95,Math.round((p.str+p.agree+p.cov+p.adj)*p.gate*p.shape)));o.call={conf:call.conf,re:re,txt:CallersPanel._bubble('ripple',call)};return o})()""")
+  chk('every call carries a confidence (integer 0–100) that equals the documented formula from its stored drivers, and the bubble says it in plain words',isinstance(cf['call']['conf'],int) and 0<=cf['call']['conf']<=100 and cf['call']['conf']==cf['call']['re'] and 'confidence' in cf['call']['txt'] and '/100' in cf['call']['txt'],str(cf['call']))
+  chk('confidence behaves: stronger evidence → higher; caution gate → ×0.75; Dash bolder and Sage more careful than Zippy; earlier callers agreeing nudges it up and disagreeing nudges it down',cf['strong']>cf['weak'] and cf['caut']<cf['strong'] and cf['dash']>cf['zip']>cf['sage'] and cf['crowdUp']>cf['crowdDn'],str(cf))
+  # 4) short memory
+  sm=px.evaluate("""(()=>{__reset();const s=CallersPanel._store(),o={},gl=(c,m)=>({chart:c,momentum:m,volume:0,revert:0,flow:0,strike:0,grokky:0});
+    s.mem.zippy=[{W:1,i:0,dir:'UP',ok:false,gl:gl(.5,-.5)},{W:2,i:0,dir:'UP',ok:false,gl:gl(.5,-.5)}];
+    const m1=CallersPanel.memMods('zippy');o.damp1=m1.damp;o.why=m1.dl.map(x=>x.why);
+    s.mem.zippy=[{W:1,i:0,dir:'UP',ok:false,gl:gl(.5,-.5)},{W:2,i:0,dir:'UP',ok:true,gl:gl(.5,.5)}];o.damp2=CallersPanel.memMods('zippy').damp;
+    s.mem.zippy=[{W:1,i:0,dir:'UP',ok:false,gl:gl(.5,-.5)}];o.damp3=CallersPanel.memMods('zippy').damp;
+    s.mem.zippy=[{W:1,i:0,dir:'UP',ok:false,gl:gl(.5,-.5)},{W:2,i:0,dir:'UP',ok:false,gl:gl(.5,-.5)}];
+    const P=CallersPanel.PROFILES.zippy,L={momentum:{lean:.2,n:2},volume:{lean:0,n:2},chart:{lean:.9,n:2},revert:{lean:0,n:2},flow:{lean:0,n:2},strike:{lean:-.1,n:2},grokky:{lean:0,n:1}};
+    const a=CallersPanel.decide(L,P,0),b=CallersPanel.decide(L,P,0,{damp:m1.damp});o.sc=[a.sc,b.sc];o.wsum=Object.values(b.w).reduce((x,y)=>x+y,0);
+    const Wt=Math.floor(Date.now()/900000)*900-7*900,D=PulseIndicators.feed(),inp=__syn(Wt+500,Wt,70010);D.cb=inp.cb;D.bn=inp.bn;CallersPanel.fire(Wt,'zippy',0,Wt+130,inp);const c=s.rounds[Wt].calls.zippy[0];o.rec=c.damp.map(x=>x.g);o.mem=c.mem.length;o.bub=CallersPanel._bubble('zippy',c);
+    const W2=Wt+900;D.cb=__syn(W2+500,W2,70010).cb;
+    for(let k=0;k<8;k++){s.mem.zippy.push({W:10+k,i:0,dir:'UP',ok:k%2==0,gl:gl(.1,.1)})}
+    const r=CallersPanel._store().rounds;r[Wt].res='yes';CallersPanel.scoreRound(r[Wt]);o.cap=s.mem.zippy.length;return o})()""")
+  chk('short memory: a group that leaned the wrong way in BOTH of my last 2 settled calls is damped ×0.7; one miss, or a hit in between, does not damp',sm['damp1'].get('chart')==0.7 and 'momentum' not in sm['damp1'] and sm['damp2']=={} and sm['damp3']=={},str((sm['damp1'],sm['damp2'],sm['damp3'])))
+  chk('damping changes the call’s score, weights still sum to 1, and the call stores + shows why (in the Why trail data) with the memory of recent outcomes',sm['sc'][1]<sm['sc'][0] and abs(sm['wsum']-1)<1e-9 and sm['rec']==['chart'] and sm['mem']==2 and 'going easy' in sm['bub'],str(sm))
+  chk('short memory keeps only the last 5 settled calls',sm['cap']==5,str(sm['cap']))
+  # 5) phases
+  ph=px.evaluate("""(()=>{__reset();const s=CallersPanel._store(),o={},A={vol:'normal',trend:'range',atrRatio:1,trendZ:0},B={vol:'wild',trend:'range',atrRatio:2.1,trendZ:0.2},t0=1800000000;
+    CallersPanel.detectPhase(A,t0);o.p1=s.phase.cur&&s.phase.cur.id;o.label=s.phase.cur.label;o.start=s.phase.cur.start;
+    s.ps.zippy={n:5,w:3,b:[{n:2,w:1},{n:2,w:1},{n:1,w:1}],gr:{}};s.tot.zippy.a={n:12,w:7};s.mem.zippy=[{W:1,i:0,dir:'UP',ok:true,gl:{}}];
+    CallersPanel.detectPhase(B,t0+100);CallersPanel.detectPhase(A,t0+200);o.flick=[s.phase.cur.id,!!s.phase.cand];
+    CallersPanel.detectPhase(B,t0+300);CallersPanel.detectPhase(B,t0+1000);o.tooEarly=s.phase.cur.id;CallersPanel.detectPhase(B,t0+2000);
+    o.p2=s.phase.cur.id;o.reason=s.phase.cur.reason;o.hist=s.phase.hist.length;o.psAfter=Object.keys(s.ps).length;o.histStats=s.phase.hist[0].stats.zippy;o.tot=s.tot.zippy.a;o.mem=s.mem.zippy.length;
+    CallersPanel.newPhase('test by hand',t0+3000);o.p3=s.phase.cur.id;o.hist3=s.phase.hist.length;o.reason3=s.phase.cur.reason;
+    const W=Math.floor(Date.now()/900000)*900-10*900,D=PulseIndicators.feed(),inp=__syn(W+300,W,70010);D.cb=inp.cb;D.bn=inp.bn;CallersPanel.fire(W,'dash',0,W+70,inp);const c=s.rounds[W].calls.dash[0];o.cph=c.ph;
+    CallersPanel.newPhase('again',t0+4000);s.rounds[W].res='yes';CallersPanel.scoreRound(s.rounds[W]);o.oldPhaseCall=[s.tot.dash.a.n,(s.ps.dash||{n:0}).n];
+    return o})()""")
+  chk('phase auto-detect: starts a phase with a start time; a brief flicker or a change that has not held 10 min / phase not 30 min old does NOT switch; a held regime change does, with a plain reason',ph['p1']==1 and ph['flick']==[1,False] and ph['tooEarly']==1 and ph['p2']==2 and 'volatility went from normal to wild' in ph['reason'],str(ph))
+  chk('phase reset: per-phase stats reset and are summarised in the phase history; all-time totals and short memory are untouched; a manual new phase works',ph['psAfter']==0 and ph['histStats']=={'n':5,'w':3} and ph['tot']=={'n':12,'w':7} and ph['mem']==1 and ph['p3']==3 and ph['hist3']==2 and 'by hand' in ph['reason3'],str(ph))
+  chk('a call made in an older phase is scored in the all-time totals but not in the new phase’s stats',ph['oldPhaseCall']==[1,0],str(ph['oldPhaseCall']))
+  # 6) bet tracking at marks
+  mt=px.evaluate("""(()=>{__reset();const s=CallersPanel._store(),o={},Wt=Math.floor(Date.now()/900000)*900-11*900,D=PulseIndicators.feed(),syn=__syn(Wt+1500,Wt,70010);D.cb=syn.cb;D.bn=syn.bn;
+    s.tot.zippy.a={n:10,w:6};s.ps.zippy={n:4,w:3,b:[],gr:{}};CallersPanel.tickMarks(Wt+239);o.none=Object.keys((s.rounds[Wt]||{snaps:{}}).snaps);
+    CallersPanel.tickMarks(Wt+241);o.s4=s.rounds[Wt].snaps[4].zippy;s.tot.zippy.a={n:11,w:7};CallersPanel.tickMarks(Wt+481);o.s8=s.rounds[Wt].snaps[8].zippy;o.s4b=s.rounds[Wt].snaps[4].zippy;
+    CallersPanel.tickMarks(Wt+700);o.no12=!s.rounds[Wt].snaps[12];s.tot.zippy.a={n:12,w:7};CallersPanel.tickMarks(Wt+725);o.s12=s.rounds[Wt].snaps[12].zippy;CallersPanel.tickMarks(Wt+850);o.keys=Object.keys(s.rounds[Wt].snaps).join();return o})()""")
+  chk('mark tallies: each caller’s standing is snapshotted once at minute 4, 8 and 12 (inside a short window), frozen afterwards, with phase record',mt['none']==[] and mt['s4']=={'n':10,'w':6,'pn':4,'pw':3} and mt['s8']['n']==11 and mt['s4b']['n']==10 and mt['no12'] and mt['s12']['n']==12 and mt['keys']=='4,8,12',str(mt))
+  # 7) crowd %
+  cw=px.evaluate("""(()=>{__reset();const s=CallersPanel._store(),o={},W=Math.floor(Date.now()/900000)*900-12*900,D=PulseIndicators.feed(),inp=__syn(W+700,W,70010);D.cb=inp.cb;D.bn=inp.bn;
+    const r=s.rounds[W]||(CallersPanel.fire(W,'dash',0,W+61,inp),s.rounds[W]);r.calls.dash[0]=null;
+    const inj=(id,i,dir,at)=>{r.calls[id][i]={i:i,sec:CallersPanel.BEATS[id][i],at:at,dir:dir,conf:60,gate:{lvl:'ok',tr:[]}}};
+    inj('dash',0,'UP',W+60);inj('zippy',0,'UP',W+120);inj('mellow',0,'UP',W+180);inj('ripple',0,'DOWN',W+240);inj('flippy',0,'DOWN',W+250);
+    CallersPanel.fire(W,'sage',0,W+310,inp);const c=r.calls.sage[0];o.crowd=c.crowd;o.dir=c.dir;o.adj=c.cp.adj;o.expect=Math.round((c.crowd.same/c.crowd.tot-0.5)*16);o.ids=CallersPanel._earlier(r,'sage',W+400).map(x=>x.id);
+    const P=CallersPanel.PROFILES.zippy,L=m=>({momentum:{lean:m,n:2},volume:{lean:m,n:2},chart:{lean:m,n:2},revert:{lean:m,n:2},flow:{lean:m,n:2},strike:{lean:m,n:2},grokky:{lean:m,n:1}}),dd=CallersPanel.decide(L(.3),P,0);
+    o.dis=CallersPanel.confidence(dd,L(.3),P,'ok',{same:0,tot:3}).parts.adj;o.agr=CallersPanel.confidence(dd,L(.3),P,'ok',{same:3,tot:3}).parts.adj;o.none=CallersPanel.confidence(dd,L(.3),P,'ok',{same:1,tot:1}).parts.adj;
+    const bk=r.calls.zippy[0].bk||'normal|above|early';s.cb[bk]={n:20,up:15,dn:5,upOk:9,dnOk:3};o.h=CallersPanel.hist(bk,'UP');o.h2=CallersPanel.hist(bk,'DOWN');s.cb['x|y|z']={n:3,up:2,dn:1,upOk:1,dnOk:0};o.few=CallersPanel.hist('x|y|z','UP');o.none2=CallersPanel.hist('nope','UP');
+    const n0=Object.values(s.cb).reduce((a,b)=>a+b.n,0);CallersPanel.fire(W,'zippy',1,W+425,inp);CallersPanel.fire(W,'mellow',1,W+485,inp);r.res='yes';CallersPanel.scoreRound(r);o.grew=Object.values(s.cb).reduce((a,b)=>a+b.n,0)-n0;return o})()""")
+  chk('crowd %: a call records how many earlier callers in the window agreed (Flippy’s contrarian call is not counted as consensus)',cw['crowd']['tot']==4 and cw['crowd']['same']==(3 if cw['dir']=='UP' else 1) and 'flippy' not in cw['ids'],str((cw['crowd'],cw['dir'],cw['ids'])))
+  chk('crowd nudges confidence only (never direction): disagreeing −8, agreeing +8, one voice = no nudge, and the nudge on the stored call matches the formula',cw['dis']==-8 and cw['agr']==8 and cw['none']==0 and cw['adj']==cw['expect'],str((cw['dis'],cw['agr'],cw['none'],cw['adj'],cw['expect'])))
+  chk('historical crowd in similar conditions: share and right-rate with n; too little history says so; scoring adds new calls to the buckets',abs(cw['h']['share']-.75)<1e-9 and abs(cw['h']['right']-.6)<1e-9 and cw['h']['n']==20 and abs(cw['h2']['share']-.25)<1e-9 and cw['few']['n']==3 and cw['none2']['n']==0 and cw['grew']>=3,str((cw['h'],cw['few'],cw['grew'])))
+  # 8) volatility gate
+  gt=px.evaluate("""(()=>{__reset();const n=1800000000+1000-(1800000000%900),W=Math.floor(n/900)*900,k=(f)=>{const s=__syn(n+30,W,70040);f(s);return PulseIndicators.compute(s).gate},o={};
+    o.G=PulseIndicators.GATE;o.base=k(s=>{});
+    const lastClosed=s=>s.cb.find(c=>c.t===Math.floor((n+30)/60)*60-60),forming=s=>s.cb.find(c=>c.t===Math.floor((n+30)/60)*60);
+    o.big=k(s=>{lastClosed(s).h+=45});o.xbig=k(s=>{lastClosed(s).h+=110});
+    const wh=(s)=>{const a=s.cb.filter(c=>c.t<Math.floor((n+30)/60)*60).slice(-3);s.strike=a[0].c;a[0].c+=1;a[1].c=s.strike-1;a[2].c=s.strike+1;forming(s).c=s.strike-1};o.whip=k(wh);
+    o.two=k(s=>{wh(s);lastClosed(s).h+=45});
+    o.rv=k(s=>{s.strike=NaN;const a=s.cb.filter(c=>c.t<Math.floor((n+30)/60)*60).slice(-5);a.forEach((c,i)=>{c.c=70000+(i%2?60:-60)});forming(s).c=70000});
+    // fire on an extreme candle: a skipped record, not scored as a loss
+    const s0=CallersPanel._store(),Wf=Math.floor(Date.now()/900000)*900-13*900,sy=__syn(Wf+400,Wf,70040),lc=sy.cb.find(c=>c.t===Math.floor(sy.now/60)*60-60);lc.h+=110;
+    CallersPanel.fire(Wf,'ripple',0,Wf+250,sy);const sk=s0.rounds[Wf].calls.ripple[0];o.skip={dir:sk.dir,lvl:sk.gate.lvl,tr:sk.gate.tr.length,backs:sk.backs,conf:sk.conf,txt:CallersPanel._bubble('ripple',sk)};
+    const sc2=__syn(Wf+500,Wf,70040);sc2.cb.find(c=>c.t===Math.floor(sc2.now/60)*60-60).h+=45;CallersPanel.fire(Wf,'sage',0,Wf+310,sc2);const cu=s0.rounds[Wf].calls.sage[0];o.caut={dir:!!cu.dir,lvl:cu.gate.lvl,gate:cu.cp&&cu.cp.gate};
+    s0.rounds[Wf].res='yes';CallersPanel.scoreRound(s0.rounds[Wf]);o.score={sk:s0.tot.ripple.sk,n:s0.tot.ripple.a.n,mem:s0.mem.ripple.length,sage:s0.tot.sage.a.n};return o})()""")
+  print('gate',{k:gt[k] for k in ('base','big','xbig','whip','two','rv','skip','caut','score')})
+  chk('gate thresholds are the documented ones (candle 3×/5× ATR, realized vol 2×, 2 strike crossings in 3 min)',gt['G']['big']==3 and gt['G']['extreme']==5 and gt['G']['rv']==2 and gt['G']['cross']==2,str(gt['G']))
+  chk('gate levels: calm tape = ok; one trigger (big candle / whipsaw / vol spike) = caution; two triggers or an extreme candle = skip',gt['base']['level']=='ok' and gt['big']['level']=='caution' and gt['whip']['level']=='caution' and gt['rv']['level']=='caution' and gt['xbig']['level']=='skip' and gt['two']['level']=='skip' and len(gt['two']['triggers'])>=2,str((gt['base'],gt['big'],gt['whip'],gt['rv'],gt['xbig'],gt['two'])))
+  chk('a skipped call is recorded ("skipped: too fast"), has no direction/backing/confidence, says why, and is NOT scored as a loss or remembered',gt['skip']['dir'] is None and gt['skip']['lvl']=='skip' and gt['skip']['tr']>=1 and not gt['skip']['backs'] and gt['skip']['conf'] is None and 'skipped: too fast' in gt['skip']['txt'] and gt['score']['sk']==1 and gt['score']['n']==0 and gt['score']['mem']==0,str((gt['skip'],gt['score'])))
+  chk('a caution call still calls, carries the badge data and the ×0.75 confidence factor, and is scored normally',gt['caut']['dir'] and gt['caut']['lvl']=='caution' and gt['caut']['gate']==0.75 and gt['score']['sage']==1,str(gt['caut']))
+  # 9) scoring, per-beat accuracy, backing, storage isolation, existing data untouched
+  sc=px.evaluate("""(()=>{__reset();const ids=CallersPanel.IDS,Wt=Math.floor(Date.now()/900000)*900-5*900,D=PulseIndicators.feed(),ks=[],gk=[],orig=Storage.prototype.setItem,rm=Storage.prototype.removeItem,gi=Storage.prototype.getItem,rmk=[],V1='{"v":1,"rounds":{"1":{}},"tot":{"zippy":{"a":{"n":3,"w":2}}},"sig":{}}';
+    localStorage.setItem('pulseboard.callers.v1',V1);GrokkyArchive._reload();
+    const before=__kinds.map(k=>localStorage.getItem(k)),tl0=JSON.stringify(GrokkyPanel.tally());
+    Storage.prototype.setItem=function(k,v){ks.push(k);return orig.call(this,k,v)};Storage.prototype.removeItem=function(k){rmk.push(k);return rm.call(this,k)};Storage.prototype.getItem=function(k){gk.push(k);return gi.call(this,k)};
     const o={};try{
-    [[4,70010],[8,70030],[12,69990]].forEach(([m,strike])=>{const inp=__syn(Wt+m*60+5,Wt,strike);D.cb=inp.cb;D.bn=inp.bn;CallersPanel.fire(Wt,m,Wt+m*60+5,inp)});
-    const R=CallersPanel._store().rounds[Wt];o.calls={};CallersPanel.IDS.forEach(i=>o.calls[i]=[4,8,12].map(m=>R.marks[m].calls[i].dir));
-    const s0=JSON.stringify(CallersPanel._store().tot);
-    const n1=CallersPanel.onKalshi({settled:[{result:'yes',close_time:new Date((Wt+900)*1000).toISOString(),expiration_value:'70100',floor_strike:70000}]});
+    const strikes=[70010,70030,69990];ids.forEach((id,k)=>CallersPanel.BEATS[id].forEach((sec,i)=>{const inp=__syn(Wt+sec+5,Wt,strikes[i]);D.cb=inp.cb;D.bn=inp.bn;CallersPanel.fire(Wt,id,i,Wt+sec+5,inp)}));
+    const R=CallersPanel._store().rounds[Wt];o.calls={};ids.forEach(i=>o.calls[i]=R.calls[i].map(c=>c.dir));o.backs=ids.map(i=>R.calls[i].filter(c=>c.dir).every(c=>c.backs===(c.dir===c.gk.g1?1:2)));
+    const n1=CallersPanel.onKalshi({settled:[{result:'yes',close_time:new Date((Wt+900)*1000).toISOString()}]});
     const T=CallersPanel._store().tot;o.n1=n1;o.tot=T;const n2=CallersPanel.onKalshi({settled:[{result:'yes',close_time:new Date((Wt+900)*1000).toISOString()}]});o.n2=n2;o.same=JSON.stringify(CallersPanel._store().tot)===JSON.stringify(T);
-    o.sig=Object.keys(CallersPanel._store().sig).length;
-    }finally{Storage.prototype.setItem=orig;Storage.prototype.removeItem=rm}
-    o.keys=[...new Set(ks)];o.rm=rmk;o.untouched=['pulseboard.v2','pulseboard.obook.v2','pulseboard.flows.v1','pulseboard.sig.v1','pulseboard.cleared.2026-11-12','pulseboard.learn.v1'].map(k=>localStorage.getItem(k))
-      .every((v,i)=>v===before[i]);o.tally=JSON.stringify(GrokkyPanel.tally())===tl0;
-    localStorage.removeItem('pulseboard.callers.v1');CallersPanel._resetCache();return o})()""")
+    o.sig=Object.keys(CallersPanel._store().sig).length;o.arch=GrokkyArchive.summary().rounds;
+    }finally{Storage.prototype.setItem=orig;Storage.prototype.removeItem=rm;Storage.prototype.getItem=gi}
+    o.keys=[...new Set(ks)].sort();o.rm=rmk;o.getArch=gk.filter(k=>k==='pulseboard.archive.v1').length;o.v1same=localStorage.getItem('pulseboard.callers.v1')===V1;o.v1read=gk.filter(k=>k==='pulseboard.callers.v1').length;
+    o.untouched=__kinds.map(k=>localStorage.getItem(k)).every((v,i)=>v===before[i]);o.tally=JSON.stringify(GrokkyPanel.tally())===tl0;localStorage.removeItem('pulseboard.callers.v1');return o})()""")
   print('callers scoring',{k:v for k,v in sc.items() if k not in ('tot',)})
-  exp={i:[d=='UP' for d in sc['calls'][i]] for i in sc['calls']}
-  okm=all(sc['tot'][i]['m%d'%m]['n']==1 and sc['tot'][i]['m%d'%m]['w']==(1 if exp[i][j] else 0) for i in exp for j,m in enumerate([4,8,12]))
-  chk('callers are scored on Kalshi settlement, overall and by minute mark (4 / 8 / 12), and backing counts add up',okm and all(sc['tot'][i]['a']['n']==3 and sc['tot'][i]['a']['w']==sum(exp[i]) and sc['tot'][i]['b1']['n']+sc['tot'][i]['b2']['n']==3 for i in exp),str(sc['tot']))
-  chk('re-settling the same round does not double count',sc['n1']==1 and sc['n2']==0 and sc['same'])
-  chk('indicator hit-rates are kept per reading and mark',sc['sig']>3)
-  chk('storage isolation: callers only ever write pulseboard.callers.v1 (and never remove another key)',sc['keys']==['pulseboard.callers.v1'] and sc['rm']==[],str((sc['keys'],sc['rm'])))
-  chk('existing scores and keys untouched by callers (pulseboard.v2 / obook / flows / sig / learn / migration flag identical; Grokky tally identical)',sc['untouched'] and sc['tally'])
-  ind=px.evaluate("""(()=>{const n=Date.now()/1000|0,W=Math.floor(n/900)*900,syn=__syn(n,W,70040),v=PulseIndicators.compute(syn),o={};o.ok=v.ok;o.keys=v.signals.map(s=>s.k);o.na=v.signals.filter(s=>s.na).map(s=>s.k);
-    const st=v.signals.find(s=>s.k=='strike');o.strike=st.desc;o.d=v.d;o.votes=Object.fromEntries(v.signals.map(s=>[s.k,s.vote]));o.allDesc=v.signals.every(s=>typeof s.desc=='string'&&s.desc.length>8);
+  okb=True
+  for i,dirs in sc['calls'].items():
+    t=sc['tot'][i];okb=okb and t['a']['n']==sum(1 for d in dirs if d) and t['a']['w']==sum(1 for d in dirs if d=='UP') and all(t['b'][j]['n']==(1 if dirs[j] else 0) and t['b'][j]['w']==(1 if dirs[j]=='UP' else 0) for j in range(len(dirs))) and t['g1']['n']+t['g2']['n']==t['a']['n']
+  chk('callers are scored on Kalshi settlement overall and by beat (1st/2nd/3rd), skips excluded, and backing counts add up',okb and all(sc['backs']),str(sc['tot']['zippy']))
+  chk('re-settling the same round does not double count; per-reading hit rates are kept; the Archive logged the round once',sc['n1']==1 and sc['n2']==0 and sc['same'] and sc['sig']>3 and sc['arch']==1,str((sc['n1'],sc['n2'],sc['arch'])))
+  chk('storage isolation: callers write only pulseboard.callers.v2 and the Archive’s own key, never remove a key, and only READ callers.v1',sc['keys']==['pulseboard.archive.v1','pulseboard.callers.v2'] and sc['rm']==[] and sc['v1same'],str((sc['keys'],sc['rm'])))
+  chk('existing data untouched: pulseboard.v2 / obook / flows / sig / learn / cleared flag / callers.v1 byte-identical, Grokky tally identical',sc['untouched'] and sc['tally'] and sc['v1same'])
+  # 10) Grokky Archive isolation
+  src=lambda f:open(os.path.join(os.path.dirname(os.path.abspath(__file__)),'..',f)).read()
+  cs_,as_,gs_,is_=src('callers.js'),src('archive.js'),src('grokky.js'),src('indicators.js')
+  chk('archive isolation (code): no live module reads the Archive’s storage key; the Archive never touches any other key; Grokkys and indicators never mention it',('pulseboard.archive' not in cs_) and ('GrokkyArchive' not in gs_) and ('GrokkyArchive' not in is_) and not re.search(r'pulseboard\.(v2|callers|learn|obook|flows|sig)',as_) and 'getItem' not in cs_.replace('getItem(KEY','') ,'')
+  ar=px.evaluate("""(()=>{__reset();const o={},W=Math.floor(Date.now()/900000)*900-14*900,D=PulseIndicators.feed(),inp=__syn(W+700,W,70010);D.cb=inp.cb;D.bn=inp.bn;
+    const run=()=>{CallersPanel._resetCache();const ids=CallersPanel.IDS;ids.forEach((id,k)=>CallersPanel.BEATS[id].forEach((sec,i)=>CallersPanel.fire(W,id,i,W+sec+3,inp)));const R=JSON.stringify(CallersPanel._store().rounds[W]);[W+245,W+485,W+725].forEach(tt=>GrokkyArchive.tick(tt,()=>PulseIndicators.compute(inp)));CallersPanel.onKalshi({settled:[{result:'no',close_time:new Date((W+900)*1000).toISOString()}]});return [R,JSON.stringify(CallersPanel._store().tot),JSON.stringify(CallersPanel._store().mem)]};
+    localStorage.removeItem('pulseboard.archive.v1');GrokkyArchive._reload();localStorage.removeItem('pulseboard.callers.v2');const A=run();
+    localStorage.setItem('pulseboard.archive.v1','{{{ not json at all');GrokkyArchive._reload();localStorage.removeItem('pulseboard.callers.v2');const B=run();
+    localStorage.setItem('pulseboard.archive.v1',JSON.stringify({v:1,since:1,agg:{callers:{zippy:{n:999,w:999,sk:0}},bench:{n:999,w:999,m:[{n:333,w:333},{n:333,w:333},{n:333,w:333}]},g1:{n:999,w:999},g2:{n:0,w:0},rounds:999,pruned:0},rounds:{},note:''}));GrokkyArchive._reload();localStorage.removeItem('pulseboard.callers.v2');const C=run();
+    o.same=[A[0]===B[0],A[1]===B[1],A[2]===B[2],A[0]===C[0],A[1]===C[1],A[2]===C[2]];
+    // memory: the Archive's lifetime wins never changed any live caller record
+    o.callersHaveNoArchiveField=!/archive/i.test(A[0]);
+    // archive keeps its own forever-log
+    localStorage.removeItem('pulseboard.archive.v1');GrokkyArchive._reload();localStorage.removeItem('pulseboard.callers.v2');CallersPanel._resetCache();run();const st=GrokkyArchive._state();const r=st.rounds[W];
+    o.logged=Object.keys(r.c).length==6&&Object.entries(r.c).every(([k,a])=>a.length==CallersPanel.BEATS[k].length);o.settled=r.s===1&&r.r===0;o.agg=GrokkyArchive.summary();o.bench=r.b.filter(x=>x!=null).length;
+    // size bound: prune oldest beyond the cap, keep totals + note
+    GrokkyArchive._setMax(6000);for(let k=0;k<200;k++){const w=W-(k+1)*900;GrokkyArchive.logCall(w,'zippy',120,'UP',60,'ok');GrokkyArchive.settle(w,'yes')}
+    const before=Object.keys(GrokkyArchive._state().rounds).length;GrokkyArchive._save();const after=Object.keys(GrokkyArchive._state().rounds).length;const sm=GrokkyArchive.summary();
+    o.prune={before:before,after:after,pruned:sm.pruned,rounds:sm.rounds,note:sm.note,bytes:sm.bytes,wins:sm.callers.zippy.w};GrokkyArchive._setMax(900000);return o})()""")
+  print('archive',{k:ar[k] for k in ('same','logged','settled','bench','prune')})
+  chk('archive isolation (behaviour): corrupt or hugely “winning” Archive data changes NOTHING in live call records, scores or memory — they are byte-identical to a run without it',all(ar['same']) and ar['callersHaveNoArchiveField'],str(ar['same']))
+  chk('archive logs every call and sit-out of every caller (16 beats per round), the settlement, and its own benchmark calls (min 4/8/12), under its own key',ar['logged'] and ar['settled'] and ar['bench']==3 and ar['agg']['rounds']>=1,str(ar['agg'])[:150])
+  chk('archive is size-bounded: oldest round rows are pruned with a note, all-time totals keep every round',ar['prune']['after']<201 and ar['prune']['pruned']>0 and 'dropped' in ar['prune']['note'] and ar['prune']['rounds']>=201 and ar['prune']['wins']>=200,str(ar['prune']))
+  # 11) Flippy: the late-flip gambler
+  fl=px.evaluate("""(()=>{__reset();const s=CallersPanel._store(),o={},base=Math.floor(Date.now()/900000)*900;const D=PulseIndicators.feed();
+ const mk=(W,strike,fall)=>{const now=W+860,cb=[],bn=[];let p=70000;const t0=Math.floor(now/60)*60;
+   for(let t=t0-7200;t<=t0;t+=60){const o2=p;const m=(t0-t)/60;p+=(m<=4&&fall)?-14-(4-m)*5:(((t/60)%5<2)?-4:4);cb.push({t,o:o2,h:Math.max(o2,p)+3,l:Math.min(o2,p)-3,c:p,v:3+((t/60)%4)});bn.push({t,o:o2-10,h:Math.max(o2,p)+3,l:Math.min(o2,p)-3,c:p-10,v:25,tb:fall&&m<=5?5:15+((t/60)%3)})}
+   return {now,W,strike:strike===null?p-3:strike,kmid:fall?0.52:0.58,cb,bn,g:{g1:'UP',g2:'DOWN',pUp:.54,items:[]},ctx:{book:fall?-0.25:.06}}};
+ const Wa=base-20*900,Wb=base-21*900,Wc=base-22*900,Wd=base-23*900;
+ // seed an earlier call in window A so the Kalshi crowd price has something to compare with (kmid .58 at 1:00)
+ const calm=__syn(Wa+100,Wa,70040);D.cb=calm.cb;D.bn=calm.bn;CallersPanel.fire(Wa,'dash',0,Wa+70,calm);
+ const A=mk(Wa,null,true);const ca=CallersPanel.fire(Wa,'flippy',0,Wa+860,A);o.A={dir:ca.dir,sit:ca.sit,conf:ca.conf,fconf:ca.fconf,thr:ca.thr,leader:ca.leader,fd:ca.fd.map(x=>[x.k,x.pts,x.max]),bub:CallersPanel._bubble('flippy',ca),backs:ca.backs};
+ const B=mk(Wb,70500,false);const cb2=CallersPanel.fire(Wb,'flippy',0,Wb+860,B);o.B={dir:cb2.dir,sit:cb2.sit,fconf:cb2.fconf,leader:cb2.leader,bub:CallersPanel._bubble('flippy',cb2),why:cb2.why};
+ const C=mk(Wc,null,false);const cc=CallersPanel.fire(Wc,'flippy',0,Wc+860,C);o.C={dir:cc.dir,sit:cc.sit,fconf:cc.fconf,leader:cc.leader};
+ s.rounds[Wa].res='yes';CallersPanel.scoreRound(s.rounds[Wa]);s.rounds[Wb].res='no';CallersPanel.scoreRound(s.rounds[Wb]);s.rounds[Wc].res='no';CallersPanel.scoreRound(s.rounds[Wc]);
+ const T=s.tot.flippy;o.T={a:T.a,sit:T.sit,b:T.b.length,sk:T.sk};o.mem=s.mem.flippy.length;o.fl=s.ps.flippy&&Object.assign({},s.ps.flippy.fl);o.psSit=s.ps.flippy&&s.ps.flippy.sit;
+ o.earlier=CallersPanel._earlier(s.rounds[Wa],'sage',Wa+900).map(x=>x.id);
+ // picky after two misses
+ s.mem.flippy=[{W:1,i:0,dir:'DOWN',ok:false,gl:{}},{W:2,i:0,dir:'DOWN',ok:false,gl:{}}];const Dd=mk(Wd,null,true);const cd=CallersPanel.fire(Wd,'flippy',0,Wd+860,Dd);o.picky={thr:cd.thr,pick:cd.pick,fconf:cd.fconf,consistent:(cd.dir!==null)===(cd.fconf>=cd.thr)};
+ // setup memory raises / phase reset clears it
+ const We=base-24*900,Wf=base-25*900;s.mem.flippy=[];const bk=ca.bk2;const h0=CallersPanel.fire(We,'flippy',0,We+860,mk(We,null,true));
+ s.ps.flippy.fl[bk]={n:10,h:8};const h1=CallersPanel.fire(Wf,'flippy',0,Wf+860,mk(Wf,null,true));o.hist={base:h0.fconf,boost:h1.fconf,fh:h1.fh};
+ CallersPanel.newPhase('test',base);o.afterReset=Object.keys(s.ps).length;
+ const Wg=base-26*900;const xs=mk(Wg,null,true);xs.cb.find(c=>c.t===Math.floor(xs.now/60)*60-60).h+=80;const cg=CallersPanel.fire(Wg,'flippy',0,Wg+860,xs);o.gate={lvl:cg.gate.lvl,evaluated:cg.fd.length>0};
+ return o})()""")
+  print('flippy',{k:fl[k] for k in ('T','picky','hist','gate')})
+  chk('Flippy calls the OPPOSITE of the leader only when his flip score reaches the bar: strong flip tape → ▼ DOWN against the UP leader with confidence ≥ 70, backing a Grokky, in first person',fl['A']['dir']=='DOWN' and fl['A']['leader']=='UP' and fl['A']['conf']>=fl['A']['thr']>=70 and fl['A']['backs'] in (1,2) and 'I smell a flip' in fl['A']['bub'] and len(fl['A']['fd'])==7 and abs(sum(x[1] for x in fl['A']['fd'])-fl['A']['fconf'])<=1,str(fl['A']))
+  chk('otherwise he sits out ("no flip seen") with the reason: far from the strike, or calm tape',fl['B']['dir'] is None and fl['B']['sit']==1 and 'No flip seen' in fl['B']['bub'] and 'too far' in fl['B']['why'] and fl['C']['dir'] is None and fl['C']['fconf']<40,str((fl['B'],fl['C'])))
+  chk('his scoreboard: flip calls (made / hit), and sitting out is tracked separately (right when no flip came) and is NEVER a loss',fl['T']['a']=={'n':1,'w':0} and fl['T']['sit']=={'n':2,'ok':1} and fl['T']['b']==1 and fl['T']['sk']==0,str(fl['T']))
+  chk('he excludes himself from the crowd (his deliberate contrarian call is not a consensus vote) and remembers recent flip calls',fl['earlier']==['dash'] and fl['mem']==1,str((fl['earlier'],fl['mem'])))
+  chk('smart memory 1: after 2 missed flip calls the bar rises (+5 each, here 80) and the call/sit-out decision follows the raised bar',fl['picky']['thr']==80 and fl['picky']['pick']==10 and fl['picky']['consistent'],str(fl['picky']))
+  chk('smart memory 2: setups that flipped before raise his score (per-phase setup history 8 of 10 → higher), and the setup history is recorded for calls AND sit-outs',fl['hist']['boost']>fl['hist']['base'] and fl['hist']['fh']['n']==10 and len(fl['fl'])>=3,str(fl['hist']))
+  chk('smart memory 3: a new market phase clears the setup history (it persists only within the phase)',fl['afterReset']==0)
+  chk('he is exempt from the "skipped: too fast" gate (still evaluates and shows the gate reading)',fl['gate']['lvl']=='skip' and fl['gate']['evaluated'])
+  ind=px.evaluate("""(()=>{const n=Date.now()/1000|0,W=Math.floor(n/900)*900,syn=__syn(n,W,70040),v=PulseIndicators.compute(syn),o={};o.ok=v.ok;o.keys=v.signals.map(s=>s.k);o.na=v.signals.filter(s=>s.na).map(s=>s.k);o.groups=Object.fromEntries(v.signals.map(s=>[s.k,s.group]));
+    const st=v.signals.find(s=>s.k=='strike');o.strike=st.desc;o.d=v.d;o.votes=Object.fromEntries(v.signals.map(s=>[s.k,s.vote]));o.allDesc=v.signals.every(s=>typeof s.desc=='string'&&s.desc.length>8);o.regime=v.regime;o.gate=v.gate;
     const up=[];let p=70000;for(let t=n-7200;t<=n;t+=60){up.push({t:t,o:p,h:p+9,l:p-1,c:p+8,v:2});p+=8}
-    const v2=PulseIndicators.compute({now:n,W:W,strike:70040,kmid:NaN,cb:up,bn:[],g:null,ctx:null});o.rsi=v2.signals.find(s=>s.k=='rsi').desc;o.ema=v2.signals.find(s=>s.k=='ema').vote;o.cvdna=v2.signals.find(s=>s.k=='cvd');
-    const v3=PulseIndicators.compute({now:n,W:W,strike:70040,kmid:NaN,cb:[],bn:[],g:null,ctx:null});o.why=v3.why;o.ok3=v3.ok;o.phi=[PulseIndicators._phi(0),PulseIndicators._phi(1.96)];return o})()""")
+    const v2=PulseIndicators.compute({now:n,W:W,strike:70040,kmid:NaN,cb:up,bn:[],g:null,ctx:null});o.rsi=v2.signals.find(s=>s.k=='rsi').desc;o.ema=v2.signals.find(s=>s.k=='ema').vote;o.cvdna=v2.signals.find(s=>s.k=='cvd');o.tsna=v2.signals.find(s=>s.k=='tshare').na;o.mom15=v2.signals.find(s=>s.k=='mom15').vote;
+    const v3=PulseIndicators.compute({now:n,W:W,strike:70040,kmid:NaN,cb:[],bn:[],g:null,ctx:null});o.why=v3.why;o.ok3=v3.ok;o.phi=[PulseIndicators._phi(0),PulseIndicators._phi(1.96)];
+    // volume surge + hammer candle + resistance
+    const s2=__syn(n,W,70040),lc=s2.cb.find(c=>c.t===Math.floor(n/60)*60-60);lc.v=40;lc.o=lc.c-6;const v4=PulseIndicators.compute(s2);o.surge=v4.signals.find(s=>s.k=='vsurge');
+    const s3=__syn(n,W,70040),l3=s3.cb.find(c=>c.t===Math.floor(n/60)*60-60);l3.o=l3.c-1;l3.h=l3.c+0.5;l3.l=l3.c-9;const v5=PulseIndicators.compute(s3);o.hammer=v5.signals.find(s=>s.k=='candle');return o})()""")
   print('indicators',ind['keys'],ind['na'])
-  need={'strike','crowd','ema','mom','vwap','drift','rsi','stretch','cvd','prem','book','gkread','gkconf','vol','implied'}
-  chk('indicators: VWAP, EMA cross, RSI, ATR/volatility, distance-to-strike in ATR units, realized vs implied move, CVD, Coinbase-vs-Binance premium and momentum are all produced',need<=set(ind['keys']) and ind['ok'] and ind['allDesc'],str(set(ind['keys'])^need))
+  need={'strike','crowd','ema','mom','mom15','vwap','drift','rsi','sr','candle','stretch','over','vsurge','cvd','tshare','prem','book','gkread','gkconf','vol','implied'}
+  chk('indicators: momentum, volume (surge, CVD, taker-buy share), chart (EMA, VWAP, RSI, support/resistance, candles), bounce-back, flow, strike, Grokky and context readings are all produced',need<=set(ind['keys']) and ind['ok'] and ind['allDesc'],str(set(ind['keys'])^need))
+  chk('indicators are grouped for the callers: momentum / volume / chart / revert / flow / strike / grokky',ind['groups']['mom']=='momentum' and ind['groups']['cvd']=='volume' and ind['groups']['tshare']=='volume' and ind['groups']['vsurge']=='volume' and ind['groups']['sr']=='chart' and ind['groups']['candle']=='chart' and ind['groups']['rsi']=='chart' and ind['groups']['stretch']=='revert',str(ind['groups']))
   chk('indicator text quotes the real live numbers (strike distance, ATRs)','ATRs' in ind['strike'] and ('$%d'%round(abs(ind['d'])) in ind['strike'].replace(',','')) and ('above' in ind['strike'] or 'below' in ind['strike']),ind['strike'][:120])
-  chk('rising candles: RSI reads overbought and the EMA cross votes UP; no taker volume → CVD says not available (never invented)','overbought' in ind['rsi'] and ind['ema']>0 and ind['cvdna']['na'] and len(ind['cvdna']['desc'])>10,ind['rsi'])
+  chk('rising candles: RSI reads overbought, EMA and 15-minute momentum vote UP; no taker volume → CVD / taker share say not available (never invented)','overbought' in ind['rsi'] and ind['ema']>0 and ind['mom15']>0 and ind['cvdna']['na'] and ind['tsna'] and len(ind['cvdna']['desc'])>10,ind['rsi'])
+  chk('a volume surge on a green candle and a hammer candle are detected from the candles',(not ind['surge']['na']) and ind['surge']['vote']>0.5 and 'surge' in ind['surge']['desc'] and ind['hammer']['vote']>0 and 'hammer' in ind['hammer']['desc'],str((ind['surge']['desc'][:80],ind['hammer']['desc'][:80])))
+  chk('indicators also return the volatility gate and the market regime used for phases',ind['gate']['level'] in ('ok','caution','skip') and ind['regime']['vol'] in ('calm','normal','wild') and ind['regime']['trend'] in ('up','down','range'),str((ind['gate'],ind['regime'])))
   chk('no candles → says why and returns no readings',ind['ok3'] is False and len(ind['why'])>10 and abs(ind['phi'][0]-0.5)<1e-6 and abs(ind['phi'][1]-0.975)<2e-3,str(ind['why']))
   # Grokky learning
   cL=b.new_context(viewport={'width':1280,'height':900});pl=cL.new_page();pl.goto(url);ready(pl);pl.evaluate(SYN)
@@ -411,26 +559,48 @@ with sync_playwright() as p:
   chk('without learning, Grokky 1 = the engine direction and Grokky 2 the opposite',lr['nolearn']['g1']=='DOWN' and lr['nolearn']['g2']=='UP' and not lr['nolearn']['learn']['flipped'])
   pl.evaluate("GrokkyPanel.update(true)")
   cL.close()
-  # callers UI on the page: seed a call for the current window and read what a person would see
-  ui=px.evaluate("""(()=>{CallersPanel._resetCache();localStorage.removeItem('pulseboard.callers.v1');const n=Date.now()/1000|0,W=Math.floor(n/900)*900,D=PulseIndicators.feed();
-    const inp=__syn(n,W,70040);D.cb=inp.cb;D.bn=inp.bn;[4,8].forEach(m=>CallersPanel.fire(W,m,n,inp));CallersPanel.update(true);const mk=CallersPanel._store().rounds[W].marks[8];return {d:mk.d,calls:mk.calls}})()""")
+  # callers UI on the page: seed a window (a skipped call included) and read what a person would see
+  ui=px.evaluate("""(()=>{__reset();localStorage.setItem('pulseboard.callers.v1','{"v":1,"rounds":{"1":{},"2":{}},"tot":{"zippy":{"a":{"n":10,"w":6},"m4":{"n":4,"w":2},"m8":{"n":3,"w":2},"m12":{"n":3,"w":2}},"mellow":{"a":{"n":10,"w":4},"m4":{"n":4,"w":1},"m8":{"n":3,"w":1},"m12":{"n":3,"w":2}},"ripple":{"a":{"n":10,"w":5},"m4":{"n":4,"w":2},"m8":{"n":3,"w":1},"m12":{"n":3,"w":2}}},"sig":{}}');CallersPanel._resetCache();
+    const n=Date.now()/1000|0,W=Math.floor(n/900)*900,D=PulseIndicators.feed(),inp=__syn(n,W,70040);D.cb=inp.cb;D.bn=inp.bn;
+    const bad=__syn(n,W,70040),lc=bad.cb.find(c=>c.t===Math.floor(n/60)*60-60);lc.h+=110;
+    CallersPanel.fire(W,'dash',0,n-60,inp);CallersPanel.fire(W,'zippy',0,n-50,inp);CallersPanel.fire(W,'mellow',0,n-40,inp);CallersPanel.fire(W,'ripple',0,n-30,bad);CallersPanel.fire(W,'dash',1,n-20,inp);CallersPanel.fire(W,'flippy',0,n-10,inp);
+    CallersPanel.update(true);const R=CallersPanel._store().rounds[W];return {d:R.calls.zippy[0].d}})()""")
   px.wait_for_timeout(1500)
   zt=px.locator('#caller-zippy').text_content()
-  chk('caller card speaks in first person, names the mark and who it backs, and quotes the real distance to strike','I’m calling' in zt and 'backing Grokky' in zt and ('$%d'%round(abs(ui['d'])) in zt.replace(',','')) and 'At the' not in zt,zt[:200])
-  chk('callers cards: no third-person narration',not re.search(r'\b(Zippy|Mellow|Ripple) (is|was|thinks|says|picked|called)\b|\bthey\b',px.locator('#callersBody').text_content()))
+  chk('caller card speaks in first person, names its minute, confidence and who it backs, and quotes the real distance to strike','I’m calling' in zt and 'confidence' in zt and 'backing Grokky' in zt and ('$%d'%round(abs(ui['d'])) in zt.replace(',','')) and 'At the' not in zt,zt[:220])
+  chk('callers cards: no third-person narration',not re.search(r'\b(Dash|Zippy|Mellow|Ripple|Sage|Flippy) (is|was|thinks|says|picked|called)\b|\bthey\b',px.locator('#callersBody').text_content()))
+  chk('six caller cards, three beat chips each (Flippy one), 16 beat dots on the timeline, with Sage’s last beat labelled 14:30 and Flippy’s 14:15',px.locator('#callersBody .cc').count()==6 and all(px.locator('#caller-%s .mchip'%i).count()==3 for i in ['dash','zippy','mellow','ripple','sage']) and px.locator('#caller-flippy .mchip').count()==1 and '14:15' in px.locator('#caller-flippy .mchips').text_content() and px.locator('#callersTl .bdot').count()==16 and '14:30' in px.locator('#caller-sage .mchips').text_content() and '11' in px.locator('#caller-dash .mchips').text_content(),px.locator('#caller-sage .mchips').text_content())
+  chk('a skipped call shows as ⏸ "skipped: too fast" with the reason, and is not shown as a win/loss',px.locator('#caller-ripple .mchip.skip').count()==1 and 'skipped: too fast' in px.locator('#caller-ripple').text_content() and px.locator('#caller-ripple .mchip.skip i').count()==0)
+  chk('confidence bar and short-memory row are on each card',px.locator('#caller-zippy .cmeter').count()>=1 and 'Confidence' in zt and px.locator('#caller-zippy .memrow').count()==1 and 'My last 5 settled calls' in zt)
   px.locator('#caller-mellow [data-xp="cwmellow"] .xpb').click();px.locator('#caller-mellow [data-xp="camellow"] .xpb').click();px.wait_for_timeout(700)
-  mt=px.locator('#caller-mellow').text_content()
-  chk('call has a written "Why?" (group weights, total, rough chance) and a "What else I considered" (against, alternatives, others, not-readable)',all(x in mt for x in ['How I weigh','I’m','Total','What else I considered','Pointing the other way','If I’d done it differently','What the others called']) or all(x in mt for x in ['evidence added up','What else I considered','Pointing the other way','If I’d done it differently','What the others called']),mt[-300:])
-  chk('timeline shows the three marks and the cards show a mark chip per mark',px.locator('#callersTl .mtl-dot').count()==3 and px.locator('#caller-zippy .mchip').count()==3)
-  chk('callers scoreboard lists the three callers plus Grokky 1/2 for comparison',px.locator('#callersScore tbody tr').count()==5 and 'Minute 12' in px.locator('#callersScore').text_content())
+  mtx=px.locator('#caller-mellow').text_content()
+  chk('call has a written "Why?" (evidence groups, total, confidence drivers, memory) and "What else I considered" (against, alternatives, crowd, others)',all(x in mtx for x in ['evidence added up','Where my','confidence comes from','My memory','What else I considered','Pointing the other way','If I’d done it differently','The crowd','What the others have called']),mtx[-420:])
+  pb=px.locator('#phaseBar').text_content()
+  chk('market phase shown with its start time, a reason, and a "Start a new phase" button; the volatility gate status is shown in plain words','Market phase' in pb and 'since' in pb and 'Start a new phase' in pb and ('Market pace looks normal' in pb or 'Moving fast' in pb or 'Too fast' in pb),pb[:200])
+  px.once('dialog',lambda d:d.dismiss());p0=px.evaluate("CallersPanel._store().phase.cur&&CallersPanel._store().phase.cur.id");px.locator('#phaseNew').click();px.wait_for_timeout(300)
+  p1=px.evaluate("CallersPanel._store().phase.cur&&CallersPanel._store().phase.cur.id")
+  px.once('dialog',lambda d:d.accept());px.locator('#phaseNew').click();px.wait_for_timeout(500)
+  p2=px.evaluate("CallersPanel._store().phase.cur&&CallersPanel._store().phase.cur.id");pr=px.evaluate("CallersPanel._store().phase.cur.reason")
+  chk('manual "new phase" asks first: cancel changes nothing, OK starts a new phase (stats reset, totals stay)',p1==p0 and p2==(p0 or 0)+1 and 'by hand' in pr,str((p0,p1,p2,pr)))
+  chk('crowd strip says how many callers so far agree and what history says for similar conditions',re.search(r'\d of \d callers so far say',px.locator('#crowdBar').text_content()) is not None and ('similar conditions' in px.locator('#crowdBar').text_content()),px.locator('#crowdBar').text_content()[:160])
+  chk('scoreboard: six callers (this phase / all time / beats / skipped or sat out) plus Grokky 1 and 2 for comparison',px.locator('#callersScore tbody tr').count()==8 and all(x in px.locator('#callersScore').text_content() for x in ['This phase','All time','1st beat','3rd beat','Skipped / sat out']))
+  px.locator('#callersMarks .xpb').click();px.wait_for_timeout(500)
+  chk('mark tallies table is available (standing at minute 4 / 8 / 12)','Standing at the 4, 8 and 12-minute marks' in px.locator('#callersMarks').text_content() and ('At minute 4' in px.locator('#callersMarks').text_content() or 'No tally' in px.locator('#callersMarks').text_content()))
+  at_=px.locator('#callersArch').text_content()
+  chk('Grokky Archive benchmark card is a labelled comparison, and the old v1 callers are shown as archived, read-only','Grokky Archive' in at_ and 'never feeds back' in at_ and 'Archived: the first three callers' in at_,at_[:160])
+  px.locator('#callersArch .xpb').nth(1).click();px.wait_for_timeout(500)
+  chk('archived v1 numbers are still readable (Zippy 6/10)','6/10' in px.locator('#callersArch').text_content())
   px.locator('#cbBody [data-xp="cbgrid"] .xpb').click();px.wait_for_timeout(700)
-  chk('check & balance: agreement meter + reading-by-reading grid with Grokky 1, Grokky 2 and all three callers',px.locator('#cbBody .cbtab thead th').count()==8 and px.locator('#cbBody .cbtab tbody tr').count()>=8 and 'of us say' in px.locator('#cbBody').text_content(),px.locator('#cbBody').text_content()[:120])
-  sn2=px.evaluate("AskPanel.snapshot()");chk('Ask AI snapshot carries a compact callers summary',('callers' in sn2) and len(json.dumps(sn2))<4500,str(len(json.dumps(sn2))))
-  ba=px.evaluate("AskPanel.builtin('What are the callers saying?')");chk('built-in answer covers the callers',('Zippy' in ba and 'Mellow' in ba and 'Ripple' in ba),ba[:100])
+  chk('check & balance: agreement meter + reading-by-reading grid with Grokky 1, Grokky 2 and all six callers',px.locator('#cbBody .cbtab thead th').count()==11 and px.locator('#cbBody .cbtab tbody tr').count()>=10 and 'of us say' in px.locator('#cbBody').text_content(),px.locator('#cbBody').text_content()[:120])
+  sn2=px.evaluate("AskPanel.snapshot()");sj=json.dumps(sn2)
+  chk('Ask AI snapshot carries the five callers, phase, crowd, gate and archive, and stays under its cap',('callers' in sn2) and len(sn2['callers']['callers'])==6 and sn2['callers']['phase'] and 'crowd' in sn2['callers'] and 'archive' in sn2['callers'] and len(sj)<4500,str(len(sj)))
+  ba=px.evaluate("AskPanel.builtin('What are the callers saying?')");chk('Flippy’s card shows his own scoreboard (flip calls, hit rate, right to sit out) and either a flip call or “no flip seen”',all(x in px.locator('#caller-flippy').text_content() for x in ['flip calls made','flip hit rate','right to sit out']) and ('No flip seen' in px.locator('#caller-flippy').text_content() or 'I smell a flip' in px.locator('#caller-flippy').text_content()))
+  chk('built-in answer covers the callers',all(x in ba for x in ['Dash','Zippy','Mellow','Ripple','Sage','Flippy']),ba[:100])
   px.evaluate("document.querySelectorAll('.xp').forEach(x=>x.classList.add('open'))");px.wait_for_timeout(600)
   chk('callers section: no page errors or console errors',not ex,str(ex))
+  px.evaluate("document.querySelector('#callersCard h2').insertAdjacentHTML('beforeend','<span class=\"sandbadge\">SAMPLE DATA</span>')")
   px.locator('#callersCard').screenshot(path=out+f'{tag}-callers-card.png')
-  px.evaluate("localStorage.removeItem('pulseboard.callers.v1');CallersPanel._resetCache()");cX.close()
+  px.evaluate("localStorage.removeItem('pulseboard.callers.v1');__reset()");cX.close()
   # reduced motion respected
   rc=b.new_context(viewport={'width':1280,'height':900},reduced_motion='reduce');rp=rc.new_page();rp.goto(url);ready(rp);rp.wait_for_timeout(1500)
   rm=rp.evaluate("""(()=>{const c=getComputedStyle(document.getElementById('gk1')),x=document.querySelector('.xp'),y=x?getComputedStyle(x):null;return {red:UI.reduced(),an:c.animationName,tr:y?y.transitionDuration:'0s',bar:[...document.querySelectorAll('.sbar i')].every(i=>i.style.width===i.getAttribute('data-w')+'%'),bal:document.getElementById('bal').textContent}})()""")
@@ -438,7 +608,7 @@ with sync_playwright() as p:
   rc.close()
   # mobile with every trail expanded
   m0=b.new_context(viewport={'width':390,'height':844},is_mobile=True,has_touch=True);m0p=m0.new_page();m0p.goto(url);ready(m0p);m0p.wait_for_timeout(1500)
-  m0p.evaluate("window.__syn=function(now,W,strike,g){const cb=[],bn=[];let p=70000;const t0=Math.floor(now/60)*60;\n for(let t=t0-7200;t<=t0;t+=60){const o=p;p+=((t/60)%5<2?-9:7)+Math.sin(t/900)*6;cb.push({t:t,o:o,h:Math.max(o,p)+4,l:Math.min(o,p)-4,c:p,v:3+((t/60)%4)});bn.push({t:t,o:o-10,h:Math.max(o,p)+4,l:Math.min(o,p)-4,c:p-10,v:25,tb:15+((t/60)%3)})}\n return {now:now,W:W,strike:strike,kmid:0.58,cb:cb,bn:bn,g:g===undefined?{g1:'UP',g2:'DOWN',pUp:.54,items:[{dir:'UP',src:'engine'},{dir:'DOWN',src:'ctx'},{dir:'UP',src:'ctx'}]}:g,ctx:{book:.06}}}");m0p.evaluate("(()=>{const n=Date.now()/1000|0,W=Math.floor(n/900)*900,D=PulseIndicators.feed(),inp=__syn(n,W,70040);D.cb=inp.cb;D.bn=inp.bn;CallersPanel.fire(W,4,n,inp);CallersPanel.update(true)})()");m0p.wait_for_timeout(800)
+  m0p.evaluate("window.__syn=function(now,W,strike,g){const cb=[],bn=[];let p=70000;const t0=Math.floor(now/60)*60;\n for(let t=t0-7200;t<=t0;t+=60){const o=p;p+=((t/60)%5<2?-9:7)+Math.sin(t/900)*6;cb.push({t:t,o:o,h:Math.max(o,p)+4,l:Math.min(o,p)-4,c:p,v:3+((t/60)%4)});bn.push({t:t,o:o-10,h:Math.max(o,p)+4,l:Math.min(o,p)-4,c:p-10,v:25,tb:15+((t/60)%3)})}\n return {now:now,W:W,strike:strike,kmid:0.58,cb:cb,bn:bn,g:g===undefined?{g1:'UP',g2:'DOWN',pUp:.54,items:[{dir:'UP',src:'engine'},{dir:'DOWN',src:'ctx'},{dir:'UP',src:'ctx'}]}:g,ctx:{book:.06}}}");m0p.evaluate("(()=>{const n=Date.now()/1000|0,W=Math.floor(n/900)*900,D=PulseIndicators.feed(),inp=__syn(n,W,70040);D.cb=inp.cb;D.bn=inp.bn;['dash','zippy','mellow','ripple','sage','flippy'].forEach((id,k)=>CallersPanel.fire(W,id,0,n-60+k*5,inp));CallersPanel.update(true)})()");m0p.wait_for_timeout(800)
   m0p.evaluate("document.querySelectorAll('.xp').forEach(x=>x.classList.add('open'))");m0p.wait_for_timeout(600)
   chk('mobile: no horizontal overflow even with every "Why?" section open',m0p.evaluate("document.documentElement.scrollWidth")<=392,str(m0p.evaluate("document.documentElement.scrollWidth")))
   m0.close()

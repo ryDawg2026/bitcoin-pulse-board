@@ -173,6 +173,29 @@ tr.clk td:last-child{position:relative}
 .lean{display:inline-flex;align-items:center;gap:5px;font-size:12px;min-width:70px;justify-content:flex-start}.lean i{display:block;height:6px;border-radius:9px;max-width:46px;min-width:2px;background:var(--mut)}.lean.up{color:var(--up)}.lean.up i{background:var(--up)}.lean.dn{color:var(--dn)}.lean.dn i{background:var(--dn)}.lean.q i{display:none}
 .cbsum{margin-bottom:10px}.cbline{font-size:14.5px;margin:6px 0 2px}.cbnote{font-size:13.5px;margin:6px 0;color:#efe2d4}
 .reveal .mchip,.cc.reveal .bubble{animation:bubblein .6s ease both}
+
+/* ===== callers v2 ===== */
+.cb-flippy{background:rgba(255,95,176,.12);border:1px solid rgba(255,95,176,.34)}.av-flippy .eyes{animation-delay:3s}
+.mchip.sit{opacity:.85;border-style:dotted}.mchip.sit b{font-size:15px}.mchip.sit i{color:var(--up)}
+.flipboard{margin-top:10px;padding:10px 12px;border-radius:14px;border:1px dashed rgba(255,95,176,.5);background:rgba(255,95,176,.06)}.fbh{font-size:13px;font-weight:700;margin-bottom:6px}.fbg{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;text-align:center}.fbg b{font-size:19px;display:block}.fbg small{display:block;font-size:11px;color:var(--mut);line-height:1.2}
+.cgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:14px}
+.cb-dash{background:rgba(255,122,89,.13);border:1px solid rgba(255,122,89,.34)}.cb-sage{background:rgba(201,163,255,.13);border:1px solid rgba(201,163,255,.34)}
+.av-dash .eyes{animation-delay:1.4s}.av-sage .eyes{animation-delay:4.2s}
+.mchip em{font-style:normal;font-size:10.5px;color:var(--mut)}.mchip.skip{opacity:.8;border-style:dashed}.mchip.skip b{font-size:15px}.mchip.caution{box-shadow:0 0 0 2px rgba(255,180,84,.45)}.mchip.caution i{color:#ffb454}
+.sbar.warnbar{background:rgba(0,0,0,.25)}.sbar.warnbar i{background:linear-gradient(90deg,#ffa63d,#ffd27a)}
+.memrow{display:flex;gap:6px;margin:4px 0}.md{width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;border:1px solid var(--line)}.md.ok{color:var(--up);border-color:rgba(47,209,139,.5);background:rgba(47,209,139,.12)}.md.bad{color:var(--dn);border-color:rgba(255,93,115,.5);background:rgba(255,93,115,.1)}
+.crowdline{font-size:12.5px;margin:6px 0 2px;color:#efe2d4}
+.mtl2{margin-bottom:26px!important}.bdot{position:absolute;top:50%;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;border:2px solid var(--line);background:var(--card)}.bdot.skip{border-style:dashed}.bdot.miss{opacity:.4}.bdot.due{box-shadow:0 0 0 2px rgba(255,255,255,.18)}
+.bt{position:absolute;top:16px;transform:translateX(-50%);font-size:11px;color:var(--mut)}.bt::after{content:" min"}
+.lgrow{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:8px;font-size:12.5px}.lg{display:inline-flex;align-items:center;gap:5px}.lg i{width:10px;height:10px;border-radius:50%;display:inline-block}.lg small{color:var(--mut);font-size:11.5px}
+.phbox{background:var(--card2);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;margin:6px 0 10px}.phrow{display:flex;gap:10px;justify-content:space-between;align-items:center;flex-wrap:wrap}.phlab{color:var(--mut);font-size:13px}
+.btn.sm{font:inherit;font-size:12.5px;padding:6px 12px;border-radius:999px;border:1px solid var(--line);background:rgba(255,255,255,.06);color:var(--tx);cursor:pointer}.btn.sm:hover{background:rgba(255,255,255,.12)}
+.gate{margin-top:8px;font-size:13px;padding:7px 10px;border-radius:12px;border:1px solid var(--line)}.gate.ok{color:var(--up);border-color:rgba(47,209,139,.35)}.gate.caution{color:#ffcf8a;border-color:rgba(255,180,84,.5);background:rgba(255,180,84,.08)}.gate.skip{color:#ffb3bd;border-color:rgba(255,93,115,.5);background:rgba(255,93,115,.08)}
+.crbox{margin:0 0 12px;font-size:14px}.crowd0{margin-bottom:2px}
+.archbox{margin-top:12px;padding:12px 14px;border-radius:var(--r);border:1px dashed var(--line)}.archhead{font-size:14px}.archline{font-size:13px;margin:4px 0}
+.flipboard .tiny{font-size:12px;margin-top:6px}
+.sandbadge{display:inline-block;margin-left:8px;padding:1px 9px;border-radius:99px;font-size:11px;font-weight:700;letter-spacing:.04em;background:#ffcf5a;color:#3a2600}
+.mbars{gap:6px}.mb small{overflow:hidden;text-overflow:ellipsis}
 </style>
 </head>
 <body>
@@ -197,17 +220,24 @@ tr.clk td:last-child{position:relative}
 </div>
 
 <section class="card" id="callersCard">
-  <h2>🧑‍🤝‍🧑 Meet the callers <span class="mut">· Zippy, Mellow and Ripple call UP or DOWN at minutes 4, 8 and 12 · paper only, no money, no orders</span></h2>
-  <div class="mut" style="font-size:13px;margin-bottom:10px">Every 15-minute window is split into 4-minute blocks. At each mark the three of us read what Grokky 1 and Grokky 2 are saying, add fresh price-action readings (VWAP, EMA, RSI, ATR, buyers vs sellers…), then call UP or DOWN and back one of the Grokkys. We see exactly the same information and think equally hard; we just weigh it in different styles. Scored on Kalshi’s real result.</div>
+  <h2>🧑‍🤝‍🧑 Meet the callers <span class="mut">· Dash, Zippy, Mellow, Ripple, Sage and Flippy · each on their own beat · paper only, no money, no orders</span></h2>
+  <div class="mut" style="font-size:13px;margin-bottom:10px">Every 15-minute window, we take turns: Dash first (minute 1), then Zippy, Mellow, Ripple and Sage, each one a minute apart, three rounds of it. Flippy is the odd one out: he only speaks up at 14:15, and only if he’s sure price is about to flip across the strike against the leader. Each call is UP or DOWN, comes with a confidence score, and backs one of the Grokkys. We see exactly the same information and think equally hard; we just weigh it differently (Dash is bold and early, Zippy follows momentum, Mellow follows volume, Ripple reads the chart, Sage waits for confirmation, Flippy gambles on late flips). Scored on Kalshi’s real result. Tap “Why?” on any card for the details.</div>
   <div id="callersTl"></div>
-  <div id="callersBody" class="grid g3">
+  <div id="phaseBar" class="phbox"></div>
+  <div id="crowdBar" class="crbox"></div>
+  <div id="callersBody" class="grid cgrid">
+    <section class="cc" id="caller-dash" aria-label="Dash"></section>
     <section class="cc" id="caller-zippy" aria-label="Zippy"></section>
     <section class="cc" id="caller-mellow" aria-label="Mellow"></section>
     <section class="cc" id="caller-ripple" aria-label="Ripple"></section>
+    <section class="cc" id="caller-sage" aria-label="Sage"></section>
+    <section class="cc" id="caller-flippy" aria-label="Flippy"></section>
   </div>
-  <h3 class="sub3">📊 Callers’ scoreboard <span class="mut">· overall and by minute mark</span></h3>
+  <h3 class="sub3">📊 Callers’ scoreboard <span class="mut">· this phase, all time, and by beat</span></h3>
   <div id="callersScore"></div>
-  <div class="mut tiny" style="font-size:12px;margin-top:6px">Later marks have less time left, so they’re naturally easier: the by-minute columns show that honestly. A mark only counts if the page was open for it, and nothing is back-filled.</div>
+  <div class="mut tiny" style="font-size:12px;margin:6px 0">Later beats have less time left, so they’re naturally easier: the by-beat columns show that honestly. A call only counts if the page was open for it, nothing is back-filled, and “skipped: too fast” calls are never scored as losses.</div>
+  <div id="callersMarks"></div>
+  <div id="callersArch" class="archbox"></div>
 </section>
 
 <section class="card" id="cbCard">
@@ -399,6 +429,7 @@ tr.clk td:last-child{position:relative}
 <script src="charts.js"></script>
 <script src="grokky.js"></script>
 <script src="indicators.js"></script>
+<script src="archive.js"></script>
 <script src="callers.js"></script>
 <script>window.ASK_AI_URL='https://pulse-ask-ai.rydawg2026.workers.dev/ask'; /* the pulse-ask-ai Worker (Workers AI, capped 50 questions/day) — see tools/ask-ai-worker/DEPLOY.md. If it errors or hits its cap the page falls back to built-in answers. Set to '' to turn AI off. */</script>
 <script src="ask.js"></script>

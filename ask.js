@@ -41,7 +41,7 @@ function snapshot(){
   var rd=window.ChartPanel&&ChartPanel.reading&&ChartPanel.reading();if(rd)o.chart_last_10min={move_usd:Math.round(rd.move),size_vs_typical_10min_move:Math.round(rd.z*10)/10};
   var ty=window.ChartPanel&&ChartPanel.typical15&&ChartPanel.typical15();if(ty)o.typical_15min_move_usd=Math.round(ty.usd);
   try{if(window.CallersPanel&&CallersPanel.summary)o.callers=CallersPanel.summary()}catch(e){}
-  o.board_notes=['Callers Zippy (momentum), Mellow (mean-reversion), Ripple (order-flow) call at minutes 4/8/12 and back a Grokky; paper only','Grokky 1 = engine side, Grokky 2 = opposite side; paper picks only','backtests: no reliable 15-minute edge from news, whale transfers, funding, OI or order-book imbalance'];
+  o.board_notes=['Six callers (Dash, Zippy, Mellow, Ripple, Sage call 3 times each on their own beats; Flippy only calls a late flip at 14:15, else sits out) back a Grokky; paper only','Grokky 1 = engine side, Grokky 2 = opposite side; paper picks only','backtests: no reliable 15-minute edge from news, whale transfers, funding, OI or order-book imbalance'];
   return o;
 }
 
@@ -79,9 +79,9 @@ function builtin(q){
   if(/(why|how).*(grokky|pick|it|you).*(lose|lost|fail|wrong|miss)|post.?mortem|what went wrong|why did .*lose/.test(l)){
     var r=lastLoss();if(!r)return 'No round has been scored yet, so there’s no loss to explain. Each round has exactly one loser; once Kalshi settles one, whoever lost will explain it in their own words in the “When one of us gets it wrong” card.';
     return '<div class="askpm">'+GrokkyPanel.postMortem(r,false)+'</div>';}
-  if(/caller|zippy|mellow|ripple|minute (4|8|12)|check.?(and|&).?balance/.test(l)){
-    var cs=sn.callers;if(!cs||!cs.callers)return 'The three callers (Zippy, Mellow and Ripple) haven’t loaded yet. Give me a moment.';
-    return '<b>The callers</b> call UP or DOWN at minutes 4, 8 and 12 of each window and back a Grokky (paper only, no money). '+cs.callers.map(function(c){return '<b>'+c.name+'</b> ('+c.style+'): '+(c.latest?'“I’m calling <b>'+c.latest.call+'</b> at minute '+c.latest.minute+', backing '+esc(c.latest.backs)+'.”':'“I haven’t called yet this window.”')+' Record: '+c.right+' (minute 4: '+c.by_minute.m4+', 8: '+c.by_minute.m8+', 12: '+c.by_minute.m12+').'}).join('<br>')+'<br><span class="mut">Later marks have less time left, so they’re naturally easier. Open “Why?” on a caller card for the full trail.</span>';}
+  if(/caller|dash|zippy|mellow|ripple|sage|flippy|phase|crowd|archive|confiden|check.?(and|&).?balance/.test(l)){
+    var cs=sn.callers;if(!cs||!cs.callers)return 'The six callers (Dash, Zippy, Mellow, Ripple, Sage and Flippy) haven’t loaded yet. Give me a moment.';
+    return '<b>The callers</b> each call UP or DOWN on their own beats (Flippy only when he sees a late flip), with a confidence score, and back a Grokky (paper only, no money). '+(cs.phase?'<b>Market phase:</b> '+esc(cs.phase)+'. ':'')+'<b>Crowd:</b> '+esc(cs.crowd||'no calls yet')+'. '+(cs.gate&&cs.gate!=='ok'?'⚠️ The volatility gate says <b>'+esc(cs.gate)+'</b> right now. ':'')+'<br>'+cs.callers.map(function(c){return '<b>'+esc(c.n)+'</b> (minutes '+esc(c.beats)+'): '+(c.last?'latest “'+esc(c.last)+'”':'“I haven’t called yet this window.”')+' This phase '+esc(c.phase)+', all time '+esc(c.all)+'.'}).join('<br>')+(cs.archive?'<br><span class="mut">Grokky Archive benchmark: '+esc(cs.archive)+'.</span>':'')+'<br><span class="mut">c = confidence, G = the Grokky backed. Open “Why?” on a caller card for the full trail.</span>';}
   if(/grokky|picks?\b|scoreboard|who.*(winning|ahead|leading)|streak/.test(l)){
     var gw=sn.grokky_this_window,sb=sn.scoreboard;
     h=gw?'<b>This window</b> — <b>Grokky 1:</b> “I’m going <b>'+gw.grokky1+'</b>'+(Array.isArray(gw.grokky1_reasons)&&gw.grokky1_reasons.length?', mostly because '+esc(gw.grokky1_reasons[0]):'')+'.” <b>Grokky 2:</b> “I’m taking <b>'+gw.grokky2+'</b>, the opposite side, like always'+(Array.isArray(gw.grokky2_reasons)&&gw.grokky2_reasons.length?'; what I leaned on was '+esc(gw.grokky2_reasons[0]):'')+'.” <span class="mut">(locked '+hhmm(Date.parse(gw.locked_at)/1000)+'; open “Why?” on our cards for the full trail)</span> ':'Neither of us has locked a pick for this window yet — we’ll share as soon as the engine has its call. ';
