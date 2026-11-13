@@ -352,7 +352,7 @@ tr.clk td:last-child{position:relative}
 <script src="context.js"></script>
 <script src="charts.js"></script>
 <script src="grokky.js"></script>
-<script>window.ASK_AI_URL=''; /* set to the pulse-ask-ai Worker URL (https://pulse-ask-ai.<subdomain>.workers.dev/ask) after it is deployed — see tools/ask-ai-worker/DEPLOY.md. Empty = built-in answers only, nothing contacts an AI service. */</script>
+<script>window.ASK_AI_URL='https://pulse-ask-ai.rydawg2026.workers.dev/ask'; /* the pulse-ask-ai Worker (Workers AI, capped 50 questions/day) — see tools/ask-ai-worker/DEPLOY.md. If it errors or hits its cap the page falls back to built-in answers. Set to '' to turn AI off. */</script>
 <script src="ask.js"></script>
 <script>
 (function(){

@@ -1,4 +1,4 @@
-// pulse-ask-ai — Cloudflare Worker (PREPARED, NOT DEPLOYED). A separate Worker from `kalshi-relay`; it never touches that one.
+// pulse-ask-ai — Cloudflare Worker (deployed 2026-11-12). A separate Worker from `kalshi-relay`; it never touches that one.
 // What it does: answers Bitcoin questions for the Pulse Board page using Workers AI (the `AI` binding, so NO external API key exists anywhere).
 // Locks: POST /ask only · CORS only for https://rydawg2026.github.io · JSON only · small body cap · per-IP burst limit (Rate Limiting binding)
 //        · per-IP daily cap + global daily cap (SQLite Durable Object) so the account stays inside Workers AI's free 10,000 neurons/day.

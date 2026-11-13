@@ -11,6 +11,15 @@ def chk(name,cond,info=''):
   if not cond: ok=False
 with sync_playwright() as p:
   b=p.chromium.launch()
+  # The shipped page points ASK_AI_URL at the live Worker. Tests must never spend its real daily cap, so every test context gets the page's ASK_AI_URL blanked (built-in mode) unless it asks for the unmodified page (raw=True).
+  _nc=b.new_context
+  def _blank(route):
+    r=route.fetch();route.fulfill(response=r,body=re.sub(r"window\.ASK_AI_URL='[^']*';","window.ASK_AI_URL='';",r.text(),count=1))
+  def _ctx(*a,raw=False,**k):
+    c=_nc(*a,**k)
+    if not raw:c.route(lambda u:__import__('urllib.parse').parse.urlparse(u).path in ('/','/index.html') and '127.0.0.1' in u,_blank)
+    return c
+  b.new_context=_ctx
   ctx=b.new_context(viewport={'width':1280,'height':900},accept_downloads=True)
   pg=ctx.new_page();errs=[];cons=[];pg.on('pageerror',lambda e:errs.append(str(e)));pg.on('console',lambda m:cons.append(m.text[:160]) if m.type=='error' else None)
   if os.environ.get('PULSE_RSS_FROM_FILES'):  # preview-only: the free rss2json relay rate-limits our local-preview origin, so serve real responses saved earlier via curl
@@ -258,6 +267,19 @@ with sync_playwright() as p:
   chk('AI text is escaped (no HTML injection)',p5.locator('#askLog img').count()==0)
   p5.locator('#askCard').scroll_into_view_if_needed();p5.locator('#askCard').screenshot(path=out+f'{tag}-ask-ai-mode-mock.png')
   chk('public ASK_AI_URL cannot be redirected by a link (askurl only accepts loopback)',pg.evaluate("(()=>{const u=new URL(location.href);return true})()") and p5.evaluate("window.ASK_AI_URL===''"))
+  # shipped config: the real Worker URL is wired in, and any failure falls back to built-in answers (the Worker itself is mocked here, no real question is sent)
+  cR=b.new_context(raw=True);pR=cR.new_page();sent=[];wm={'m':'ok'}
+  def wmock(route):
+    sent.append(route.request.method)
+    if route.request.method=='OPTIONS':route.fulfill(status=204,headers={'access-control-allow-origin':'*','access-control-allow-headers':'Content-Type'});return
+    hd={'access-control-allow-origin':'*','access-control-expose-headers':'X-Questions-Left-Today','X-Questions-Left-Today':'48'}
+    if wm['m']=='ok':route.fulfill(status=200,headers={**hd,'content-type':'text/event-stream'},body='data: {"t":"Real-model style answer."}\n\ndata: {"done":true,"model":"@cf/openai/gpt-oss-120b"}\n\n')
+    else:route.fulfill(status=429,headers={**hd,'content-type':'application/json'},body='{"error":"daily_cap"}')
+  pR.route('https://pulse-ask-ai.rydawg2026.workers.dev/**',wmock)
+  pR.goto(base+'/?kalshi=/kalshi-proxy');ready(pR)
+  chk('shipped page has the pulse-ask-ai Worker URL configured and shows AI mode',pR.evaluate("window.ASK_AI_URL")=='https://pulse-ask-ai.rydawg2026.workers.dev/ask' and 'AI mode' in pR.locator('#askMode').inner_text(),pR.locator('#askMode').inner_text())
+  rr=ask(pR,'What is a halving?',2500);chk('configured Worker answer is shown as an AI answer',('AI answer' in rr and 'Real-model style answer' in rr) and 'POST' in sent,rr[:100])
+  wm['m']='cap';rr2=ask(pR,'And mining?',2500);chk('configured Worker at its cap → built-in answer with a clear label',('Built-in answer (the AI backend was unavailable' in rr2),rr2[:100]);cR.close()
   c6=b.new_context();p6=c6.new_page();p6.goto(base+'/?kalshi=/kalshi-proxy&askurl=https://evil.example.com/ask');ready(p6)
   chk('?askurl=https://evil… is ignored',('Built-in answers' in p6.locator('#askMode').inner_text()),p6.locator('#askMode').inner_text());c6.close()
   chk('no page errors in AI-mode page',not e5,str(e5));c5.close()

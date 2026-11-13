@@ -1,4 +1,4 @@
-# pulse-ask-ai — NOT DEPLOYED. Separate from the kalshi-relay Worker. Deploy steps: see DEPLOY.md.
+# pulse-ask-ai — deployed 2026-11-12 (workers.dev). Separate from the kalshi-relay Worker. See DEPLOY.md.
 name = "pulse-ask-ai"
 main = "worker.js"
 compatibility_date = "2026-11-01"

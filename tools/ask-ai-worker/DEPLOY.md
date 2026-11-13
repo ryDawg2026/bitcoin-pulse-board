@@ -1,4 +1,6 @@
-# pulse-ask-ai — Workers AI backend for the board's "Ask AI" panel (PREPARED, NOT DEPLOYED)
+# pulse-ask-ai — Workers AI backend for the board's "Ask AI" panel (DEPLOYED 2026-11-12 at https://pulse-ask-ai.rydawg2026.workers.dev/ask)
+
+> Deployed through the Cloudflare connector (same account as `kalshi-relay`, which was not touched). Rate-limit namespace `7301` was checked unused on the account. First live smoke tests (Nov 12, 2026): non-empty streamed answers from `@cf/openai/gpt-oss-120b`; chunk shape `{"t":…}` then `{"done":true,"model":…}` confirmed; foreign Origin → 403, GET → 405, OPTIONS → 204. Kill switch: set Worker var `ENABLED=false`.
 
 A separate Worker. It does not touch `kalshi-relay`. No external API key exists anywhere: the model runs through the Workers AI **binding** on your own Cloudflare account.
 
